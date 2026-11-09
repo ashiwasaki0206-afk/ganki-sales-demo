@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>契約・更新</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="ganki-base.css"><style>
+.stats{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.stat .k2{display:block;font-size:11.5px;color:var(--muted)}
+.new-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.new-wrap .cap{text-align:right}
+.bulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:8px;background:var(--warn-soft)}
+.bulk .cnt{font-size:12.5px;color:var(--warn);font-weight:500}
+.steps{font-size:12px;color:var(--muted)}
+.tbl tbody tr{cursor:pointer}
+.tbl tbody tr:hover td{background:#f8f9fc}
+.tbl tbody tr.is-open:hover td{background:var(--primary-soft)}
+.tbl td .ops{display:flex;gap:4px;flex-wrap:wrap}
+.selbox{display:inline-flex;align-items:center;justify-content:center;padding:8px;margin:-8px;border-radius:6px;cursor:pointer}
+.selbox:hover{background:var(--surface-2)}
+.tbl input[type=checkbox]{width:22px;height:22px;margin:0;accent-color:var(--primary);cursor:pointer}
+.tbl{min-width:1040px}
+.dd{white-space:nowrap;font-size:12.5px}
+.dd.warn{color:var(--warn);font-weight:500}
+.dd.danger{color:var(--danger);font-weight:700}
+.panel-actions{display:flex;gap:8px;flex-wrap:wrap}
+.panel-title{outline:none}
+.letter{border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:#fffefb;font-size:13px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.letter h4{margin:4px 0;font-size:15px;text-align:center;letter-spacing:.04em}
+.letter .l-date,.letter .l-from{text-align:right;color:var(--muted);font-size:12.5px}
+.letter .kv{grid-template-columns:7.5em minmax(0,1fr);background:var(--surface-2);padding:8px 10px;border-radius:6px}
+.letter-item{display:flex;flex-direction:column;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.letter-item:last-child{border-bottom:0}
+.letter-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.inline-field{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.inline-field input{width:9em;border:1px solid var(--input);border-radius:7px;padding:5px 8px;background:var(--surface)}
+.formbox{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.docs li{align-items:center}
+.hist-room li .sub b{color:var(--fg);font-weight:500}
+.cur-lease{background:var(--primary-soft);border-radius:6px;padding-inline:6px!important}
+@media (max-width:640px){
+  .new-wrap{align-items:flex-start}.new-wrap .cap{text-align:left}
+  .tbl.cards td .ops{flex-direction:column;gap:6px;margin-top:6px}
+  .tbl.cards td .ops .act{display:block;width:100%;text-align:center;min-height:40px;padding-block:8px}
+  .tbl.cards td[data-label="操作"]{padding-left:0}
+  .tbl.cards td[data-label="操作"]::before{display:none}
+  .tbl.cards td.selcell{position:absolute;right:8px;top:6px;width:auto;padding:0;z-index:2}
+  .tbl.cards tr.has-sel{padding-right:52px}
+}
+</style></head>
+<body><div class="topbar" id="topbar"></div><div class="app"><aside class="side" id="side"></aside><main class="main" id="main">
+<div class="head">
+  <div><h1>契約・更新</h1><p class="sub" id="headSub"></p></div>
+  <div class="new-wrap"><a class="btn primary" href="register.html">＋ 新しい契約</a><span class="cap">オーナー・物件・入居者もまとめて登録できます</span></div>
+</div>
+<section class="stats" id="stats" aria-label="状態で絞り込む"></section>
+<section class="card" aria-labelledby="listTitle">
+  <div class="card-head"><h2 id="listTitle">契約の一覧</h2><span class="cap" id="listCap"></span></div>
+  <div class="toolbar">
+    <label class="sr" for="q">契約を検索</label>
+    <input class="search" id="q" type="search" placeholder="入居者名・フリガナ・物件・号室で検索" autocomplete="off">
+    <label class="sr" for="sort">並べ替え</label>
+    <select id="sort">
+      <option value="end">終了日が近い順</option>
+      <option value="start">開始日が新しい順</option>
+      <option value="room">物件・号室の順</option>
+      <option value="rent">家賃が高い順</option>
+    </select>
+  </div>
+  <div id="notes"></div>
+  <div id="bulk"></div>
+  <div id="list"></div>
+</section>
+</main></div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="panel" id="panel" hidden aria-labelledby="panelTitle"></aside>
+<div id="toast"></div>
+<script src="ganki-local-data.js"></script>
+<script src="ganki-data.js"></script><script src="ganki-docs.js"></script><script src="ganki-dropbox.js"></script>
+<script src="ganki-jonojo.js"></script><script>GK.shell('contracts.html');
+(function(){
+if(GK.pageGate('page.contracts'))return; /* 機能の設定: this screen is OFF for the current person */
+/* 機能の設定: the feature behind each data-act (a button whose feature is OFF is not drawn, and its action does not run) */
+var ACT_FEAT={confirm:'act.confirm',movein:'act.movein',mk:'act.renew',mkSel:'act.renew',selAll:'act.renew',send:'act.renewstep',sendAll:'act.renewstep',sendIds:'act.renewstep',agree:'act.renewstep',cancel:'act.notice',saveNotice:'act.notice',undoNotice:'act.notice',tel:'pi.tel',docLease:'doc.read',doc:'doc.view'};
+function actOk(a){return !ACT_FEAT[a]||GK.can(ACT_FEAT[a])}
+function gateHtml(h){return String(h).replace(/<button\b[^>]*\bdata-act="(\w+)"[^>]*>[\s\S]*?<\/button>/g,function(m,a){return actOk(a)?m:''})}
+/* always read GK.db at use time: another tab's save can replace it (window.GKrefresh below) */
+var T=GK.TODAY,esc=GK.esc,yen=GK.yen;
+/* dates can come from typed takeover data: escape them, since jp() output goes into HTML (normal dates are unchanged) */
+function jp(s){return esc(GK.jp(s))}
+function isCancelled(l){return String(l.status||'').indexOf('取消')===0}
+var ND=function(){return GK.db.prefs.notifyDays||90};
+/* takeover contracts: the start date may still be unknown, deposit / fee may be missing */
+function startTxt(l){return l.startUnknown||!l.start?'始まり 確認中':jp(l.start)}
+function endTxt(l){return jp(l.end)+(l.endUnknown?'（仮）':'')}
+function yenOr(n,l){return n||!(l&&l.takeover)?yen(n):'未登録'}
+var LIM=function(){return GK.addDays(T,ND())};
+function isNear(l){return l.status==='有効'&&!l.notice&&l.renewal!=='更新済み'&&l.renewal!=='更新合意'&&l.end<=LIM()}
+function isNotice(l){return l.status==='有効'&&!!l.notice}
+var FILTERS=[
+  ['active','契約中',function(l){return l.status==='有効'},'ok'],
+  ['near','更新が近い',isNear,'warn'],
+  ['notice','退去予定',isNotice,'info'],
+  ['apply','申込中・入居予定',function(l){return l.status==='申込中'||l.status==='入居予定'},''],
+  ['ended','終了・取消',function(l){return l.status==='終了'||isCancelled(l)},'']
+];
+function fdef(k){return FILTERS.filter(function(f){return f[0]===k})[0]}
+var st={f:'',q:'',sort:'end',limit:20,sel:new Set(),panel:null,focusId:null,histAll:false,tel:{}};
+var draft={};
+
+/* ---------- helpers ---------- */
+function info(l){var u=GK.unit(l.unit)||{no:'',prop:''},p=GK.prop(u.prop)||{n:l.unit},t=GK.tenant(l.tenant)||{n:'（未登録）',k:''};return {u:u,p:p,t:t}}
+function rstat(l){
+  if(l.status!=='有効')return ['—',''];
+  if(l.notice)return ['退去予定','warn'];
+  if(l.renewal==='更新済み')return [l.renewedStart&&l.renewedStart>T?'更新合意':'更新済み','ok'];
+  if(l.renewal==='更新合意')return ['更新合意','ok'];
+  if(l.renewal==='送付済み')return ['送付済み','info'];
+  if(l.renewal==='案内作成済み')return ['案内作成済み','info'];
+  return l.end<=LIM()?['未案内','warn']:['まだ先',''];
+}
+function rpill(l){var r=rstat(l);if(r[0]==='—')return '<span class="s">—</span>';if(r[0]==='まだ先')return '<span class="s">期限まで余裕あり</span>';return '<span class="pill '+r[1]+'">'+r[0]+'</span>'}
+/* 取消（入れ替えで契約）etc.: a short neutral pill, the reason in small text */
+function spill(l){
+  if(isCancelled(l)){var why=String(l.status).replace(/^取消/,'').replace(/^（(.*)）$/,'$1');return '<span class="pill">申込取消</span>'+(why?' <span class="s">'+esc(why)+'</span>':'')}
+  return GK.leasePill(isNotice(l)?'退去予定':l.status);
+}
+function daysCell(l){
+  if(l.status==='有効'){
+    var target=l.notice?l.notice.date:l.end,d=GK.days(T,target),lbl=l.notice?'退去まで':'終了まで';
+    if(d<0&&!l.notice&&l.renewal==='更新済み')return '<span class="s">更新済み（新しい期間で継続中）</span>';
+    if(d<0)return '<span class="dd danger">'+(l.notice?'退去日を':'期限を')+' '+(-d)+'日超過</span>';
+    return '<span class="dd '+(d<=ND()?'warn':'')+'">'+lbl+' '+d+'日</span>';
+  }
+  if(l.status==='終了')return '<span class="s">終了済み</span>';
+  if((l.status==='申込中'||l.status==='入居予定')&&l.start)return '<span class="s">入居まで '+Math.max(0,GK.days(T,l.start))+'日</span>';
+  return '<span class="s">—</span>';
+}
+/* undo for lease actions. GK.db can be replaced by another tab's save (GK.load), so nothing here holds on to
+   db objects: leases are found again by id, and only the log / hist entries this action added are removed
+   (keys taken before and right after the action; entries added later, here or in another tab, stay).
+   Usage: var undo=snap(ids[,restoreExtra]); ...change + GK.save()...; undo.mark(); GK.toast(msg,undo) */
+function lkey(x){return x.at+'|'+x.t}
+function hkey(x){return x.id+'|'+x.at+'|'+x.t}
+function kcount(list,f){var c={};(list||[]).forEach(function(x){var k=f(x);c[k]=(c[k]||0)+1});return c}
+function kdiff(before,list,f){var now=kcount(list,f),d={};Object.keys(now).forEach(function(k){var n=now[k]-(before[k]||0);if(n>0)d[k]=n});return d}
+function kdrop(list,f,d){var left={};Object.keys(d).forEach(function(k){left[k]=d[k]});return (list||[]).filter(function(x){var k=f(x);if(left[k]>0){left[k]--;return false}return true})}
+function snap(ids,extra){
+  var saved=ids.map(function(id){return JSON.stringify(GK.lease(id))}),bl=kcount(GK.db.log,lkey),bh=kcount(GK.db.hist,hkey),made=null;
+  function mark(){if(!made)made={log:kdiff(bl,GK.db.log,lkey),hist:kdiff(bh,GK.db.hist,hkey)}}
+  var undo=function(){
+    mark();var d=GK.db;
+    ids.forEach(function(id,i){var l=GK.lease(id),o=JSON.parse(saved[i]);if(!l||!o)return;Object.keys(l).forEach(function(k){delete l[k]});Object.assign(l,o)});
+    if(extra)extra();
+    d.log=kdrop(d.log,lkey,made.log);d.hist=kdrop(d.hist,hkey,made.hist);
+    GK.save();renderAll();GK.toast('元に戻しました');
+  };
+  undo.mark=mark;
+  return undo;
+}
+function setHash(h){try{history.replaceState(null,'',location.pathname+location.search+(h?'#'+h:''))}catch(e){}}
+function updateBadge(){
+  var a=document.querySelector('#side a[href="contracts.html"]');if(!a)return;
+  var n=GK.renewalsDue().length,b=a.querySelector('.badge');
+  if(!n){if(b)b.remove();return}
+  if(!b){b=document.createElement('span');b.className='badge';a.appendChild(b)}
+  b.textContent=n;b.setAttribute('aria-label','要確認 '+n+'件');
+}
+function letterDue(end){var d=GK.addDays(T,21),lim=GK.addDays(end,-30);if(lim<d)d=lim;if(d<GK.addDays(T,7))d=GK.addDays(T,7);return d}
+
+/* ---------- list ---------- */
+function filtered(){
+  var f=st.f?fdef(st.f)[2]:null,q=st.q;
+  var list=GK.db.leases.filter(function(l){
+    if(f&&!f(l))return false;
+    if(!q)return true;
+    var x=info(l);return GK.hit(q,[x.t.n,x.t.k,x.p.n,x.u.no,x.p.n+x.u.no,l.unit]);
+  });
+  var rank=function(l){return l.status==='終了'||isCancelled(l)?1:0};
+  var S={
+    end:function(a,b){return rank(a)-rank(b)||(rank(a)?(a.end<b.end?1:a.end>b.end?-1:0):(a.end<b.end?-1:a.end>b.end?1:0))},
+    start:function(a,b){return a.start<b.start?1:a.start>b.start?-1:0},
+    room:function(a,b){return a.unit<b.unit?-1:a.unit>b.unit?1:(a.start<b.start?1:-1)},
+    rent:function(a,b){return (b.rent+b.fee)-(a.rent+a.fee)}
+  };
+  return list.sort(S[st.sort]||S.end);
+}
+function renderHead(){
+  var c=function(k){return GK.db.leases.filter(fdef(k)[2]).length};
+  var un=GK.renewalsDue().length;
+  document.getElementById('headSub').textContent='契約 '+GK.db.leases.length+'件 · 契約中 '+c('active')+'件 · 更新が近い '+c('near')+'件（うち未案内 '+un+'件）· 退去予定 '+c('notice')+'件';
+  document.getElementById('stats').innerHTML=FILTERS.map(function(f){
+    var n=GK.db.leases.filter(f[2]).length,on=st.f===f[0];
+    var extra=f[0]==='near'?'<span class="k2">期限 '+ND()+'日以内 · 未案内 '+un+'件</span>':f[0]==='notice'?'<span class="k2">退去の連絡あり</span>':'';
+    return '<button type="button" class="stat '+f[3]+'" data-f="'+f[0]+'" aria-pressed="'+on+'"><span class="k">'+f[1]+'</span><span class="v">'+n+'<small>件</small></span>'+extra+'</button>';
+  }).join('');
+}
+function renderNotes(n){
+  var h='';
+  if(st.f)h+='<span>「'+esc(fdef(st.f)[1])+'」だけ表示中（'+n+'件）</span><button type="button" class="link" data-act="clearF">解除</button>';
+  if(st.q)h+='<span>「'+esc(st.q)+'」で検索中</span><button type="button" class="link" data-act="clearQ">検索を消す</button>';
+  document.getElementById('notes').innerHTML=h?'<div class="filter-note">'+h+'</div>':'';
+}
+function createdIds(){return GK.db.leases.filter(function(l){return l.status==='有効'&&!l.notice&&l.renewal==='案内作成済み'}).map(function(l){return l.id})}
+function renderBulk(list){
+  var el=document.getElementById('bulk');
+  if(st.f!=='near'||(!GK.can('act.renew')&&!GK.can('act.renewstep'))){el.innerHTML='';return}
+  list=list||filtered();
+  var un=list.filter(function(l){return rstat(l)[0]==='未案内'}).map(function(l){return l.id});
+  st.sel.forEach(function(id){if(un.indexOf(id)<0)st.sel.delete(id)});
+  var all=un.length&&un.every(function(id){return st.sel.has(id)}),cr=createdIds();
+  el.innerHTML=gateHtml('<div class="bulk" role="group" aria-label="更新案内のまとめ操作">'+
+    '<button type="button" class="btn" data-act="selAll" '+(un.length?'':'disabled')+'>'+(all?'選択を外す':'未案内をすべて選ぶ（'+un.length+'件）')+'</button>'+
+    '<span class="cnt" aria-live="polite">'+st.sel.size+'件を選択中</span>'+
+    '<button type="button" class="btn primary" data-act="mkSel" '+(st.sel.size?'':'disabled')+'>選んだ契約の更新案内を作成</button>'+
+    (cr.length?'<button type="button" class="btn" data-act="viewLetters">作成済みの案内を見る（'+cr.length+'件）</button><button type="button" class="btn" data-act="sendAll">作成済みをすべて送付済みにする（'+cr.length+'件）</button>':'')+
+    '</div><p class="steps" style="margin-top:6px">進め方：① 案内を作成（送る前なら家賃などを直せます）→ ② 送付済みにする → ③ 入居者の返事を受けて「更新合意」または「退去の連絡」（契約上の解約の申し出）。案内は契約終了の'+(GK.db.prefs.notifyDays||90)+'日前から出ます。</p>');
+}
+function ops(l){
+  var x=info(l),who=esc(x.p.n+' '+x.u.no+'号室 '+x.t.n+'様');
+  var b=function(a,t,c){if(!actOk(a))return '';return '<button type="button" class="act '+(c||'')+'" data-act="'+a+'" data-id="'+esc(l.id)+'" aria-label="'+who+'：'+t+'">'+t+'</button>'};
+  if(l.status==='申込中')return b('confirm','契約を確定（契約中にする）','ok');
+  if(l.status==='入居予定')return l.start<=T?b('movein','入居済みにする（契約中へ）','ok'):'';
+  if(l.status!=='有効')return '';
+  var r=rstat(l)[0];
+  if(r==='未案内')return b('mk','案内を作成');
+  if(r==='案内作成済み')return b('view','案内を見る')+b('send','送付済みにする','ok');
+  if(r==='送付済み')return b('agree','更新合意','ok')+b('cancel','退去の連絡');
+  if(r==='退去予定')return '<a class="act" href="turnover.html#unit-'+esc(l.unit)+'" aria-label="'+who+'：入れ替えへ">入れ替えへ</a>';
+  return '';
+}
+/* 申込中 → 契約中（or 入居予定 when the start date is still ahead）. Returns an error message or ''. */
+function blocker(l){
+  var cur=GK.activeLease(l.unit);if(!cur||cur.id===l.id)return '';
+  if(cur.notice&&l.start>cur.notice.date&&l.start>T)return '';
+  var t=GK.tenant(cur.tenant)||{n:''};
+  /* plain text (shown with textContent) */
+  return 'この部屋にはまだ契約中の入居者（'+t.n+' 様）がいます。'+(cur.notice?'入居日を退去日（'+GK.jp(cur.notice.date)+'）の翌日以降にするか、':'先に')+'「入居者の入れ替え」で退去を登録してください。';
+}
+function showBlock(l,msg){
+  openPanel({type:'lease',id:l.id});
+  var er=document.getElementById('cErr');if(er)er.textContent=msg;
+}
+function confirmLease(id){
+  var l=GK.lease(id);if(!l||l.status!=='申込中')return;
+  var msg=blocker(l);if(msg){showBlock(l,msg);return}
+  /* the undo looks the unit up again by id at undo time (GK.db may have been reloaded by then) */
+  var uid=l.unit,u=GK.unit(uid),hadUnit=!!u,oldVac=u?u.vacant:'';
+  var undo=snap([id],function(){var u2=GK.unit(uid);if(hadUnit&&u2)u2.vacant=oldVac});
+  l.status=l.start>T?'入居予定':'有効';l.agreedAt=T;if(u)u.vacant=''; /* agreedAt: 賃上げ成功例 (sales.html) */
+  var lab=l.status==='入居予定'?'入居予定（'+GK.jp(l.start)+' から契約中）':'契約中';
+  GK.log('申込の契約を確定しました：'+lab,l.unit);GK.save();undo.mark();renderAll();
+  GK.toast('契約を確定しました：'+lab,undo);
+}
+function moveIn(id){
+  var l=GK.lease(id);if(!l||l.status!=='入居予定')return;
+  var msg=blocker(l);if(msg){showBlock(l,msg);return}
+  var undo=snap([id]);l.status='有効';
+  GK.log('入居日を迎えたため契約中にしました（'+GK.jp(l.start)+'〜）',l.unit);GK.save();undo.mark();renderAll();
+  GK.toast('契約中にしました',undo);
+}
+function row(l,near){
+  var x=info(l),q=st.q,open=st.panel&&st.panel.type==='lease'&&st.panel.id===l.id,r=rstat(l)[0];
+  var chk=near?'<td class="selcell">'+(r==='未案内'?'<label class="selbox"><input type="checkbox" class="sel" data-id="'+esc(l.id)+'" aria-label="'+esc(x.t.n)+'様の契約を選ぶ"'+(st.sel.has(l.id)?' checked':'')+'></label>':'')+'</td>':'';
+  var o=ops(l);
+  return '<tr data-id="'+esc(l.id)+'" class="'+(open?'is-open':'')+(near?' has-sel':'')+'">'+chk+
+    '<td><button type="button" class="rowbtn" data-open="'+esc(l.id)+'" aria-label="'+esc(x.p.n+' '+x.u.no+'号室 '+x.t.n+'様の契約の詳細')+'">'+GK.hl(x.p.n,q)+' '+GK.hl(x.u.no,q)+'</button><div class="s"><a href="properties.html#room-'+esc(l.unit)+'">台帳を開く</a></div></td>'+
+    '<td data-label="入居者"><a href="tenants.html#tenant-'+esc(l.tenant)+'">'+GK.hl(x.t.n,q)+'</a><div class="s">'+GK.hl(x.t.k,q)+'</div></td>'+
+    '<td data-label="期間" style="white-space:nowrap">'+startTxt(l)+'〜<br>'+endTxt(l)+(l.renewals&&l.renewals.length?'<div class="s">更新 '+l.renewals.length+'回</div>':'')+(l.takeover?'<div class="s"><span class="pill">引継ぎ</span></div>':'')+'</td>'+
+    '<td class="num" data-label="家賃＋共益費">'+((+l.rent||0)+(+l.fee||0)?yen((+l.rent||0)+(+l.fee||0)):'未登録')+'<div class="s">家賃 '+yenOr(l.rent,{takeover:1})+'＋共益費 '+yenOr(l.fee,l)+'</div></td>'+
+    '<td data-label="保証会社">'+(l.gua?esc(l.gua):'<span class="s">なし</span>')+'</td>'+
+    '<td data-label="状態">'+spill(l)+'</td>'+
+    '<td data-label="更新の状況">'+rpill(l)+'</td>'+
+    '<td data-label="残り日数">'+daysCell(l)+'</td>'+
+    (o?'<td data-label="操作"><div class="ops">'+o+'</div></td>':'<td></td>')+'</tr>';
+}
+function renderList(){
+  var list=filtered(),near=st.f==='near',el=document.getElementById('list');
+  renderNotes(list.length);renderBulk(list);
+  document.getElementById('listCap').textContent=list.length+'件'+(list.length>st.limit?'（上位 '+st.limit+'件を表示）':'');
+  if(!list.length){
+    var msg;
+    if(st.q)msg='<div class="empty">「'+esc(st.q)+'」に当てはまる契約はありません。<br>名前の一部や号室だけでも探せます。 <button type="button" class="link" data-act="clearQ">検索を消す</button></div>';
+    else if(near)msg='<div class="empty-ok">期限が近い契約の更新案内はすべて済んでいます。次は '+ND()+'日以内に期限が来た契約がここに出ます。</div>';
+    else if(st.f)msg='<div class="empty">「'+esc(fdef(st.f)[1])+'」の契約はありません。 <button type="button" class="link" data-act="clearF">絞り込みを解除</button></div>';
+    else msg='<div class="empty">契約がまだありません。 <a href="register.html">新しい契約を登録</a></div>';
+    el.innerHTML=msg;return;
+  }
+  var shown=list.slice(0,st.limit),rest=list.length-shown.length;
+  el.innerHTML='<div class="tbl-wrap scroll"><table class="tbl cards"><thead><tr>'+(near?'<th><span class="sr">選ぶ</span>選択</th>':'')+
+    '<th>物件・号室</th><th>入居者</th><th>期間</th><th class="num">家賃＋共益費</th><th>保証会社</th><th>状態</th><th>更新の状況</th><th>残り日数</th><th>操作</th></tr></thead><tbody>'+
+    shown.map(function(l){return row(l,near)}).join('')+'</tbody></table></div>'+
+    (rest>0?'<div class="more" style="margin-top:8px"><button type="button" class="btn" data-act="more">ほか '+rest+'件を表示</button></div>':(list.length>20?'<div class="more" style="margin-top:8px"><button type="button" class="btn ghost" data-act="less">上位20件に戻す</button></div>':''));
+}
+function renderAll(){renderHead();renderList();updateBadge();renderPanel()}
+
+/* ---------- actions ---------- */
+function createLetters(ids){
+  ids=ids.filter(function(id){var l=GK.lease(id);return l&&l.status==='有効'&&!l.notice&&!l.renewal});
+  if(!ids.length){GK.toast('作成できる未案内の契約がありません');return}
+  var undo=snap(ids);
+  ids.forEach(function(id){var l=GK.lease(id),ns=GK.addDays(l.end,1);
+    l.renewal='案内作成済み';l.letter={created:T,start:ns,end:GK.addYears(ns,2),rent:l.rent,fee:l.fee,due:letterDue(l.end)};
+    GK.log('更新案内を作成しました（更新後 '+GK.jp(ns)+'〜'+GK.jp(l.letter.end)+'・未送付）',l.unit)});
+  ids.forEach(function(id){st.sel.delete(id)});
+  GK.save();undo.mark();openPanel(ids.length===1?{type:'lease',id:ids[0]}:{type:'letters',ids:ids},ids.length===1?'letter':null);renderAll();
+  GK.toast(ids.length+'件の更新案内を作成しました（まだ送付していません）',undo);
+}
+function sendLetters(ids){
+  ids=ids.filter(function(id){var l=GK.lease(id);return l&&l.renewal==='案内作成済み'});
+  if(!ids.length)return;
+  var undo=snap(ids);
+  ids.forEach(function(id){var l=GK.lease(id);l.renewal='送付済み';l.letter.sent=T;GK.log('更新案内を送付済みにしました（回答期限 '+GK.jp(l.letter.due)+'）',l.unit)});
+  GK.save();undo.mark();renderAll();GK.toast(ids.length+'件を送付済みにしました',undo);
+}
+function agree(id){
+  var l=GK.lease(id);if(!l||l.status!=='有効'||l.notice)return;
+  var undo=snap([id]),ns=GK.addDays(l.end,1),ne=GK.addYears(ns,2),L=l.letter||{};
+  l.renewals=(l.renewals||[]).concat([{prevEnd:l.end,start:ns,end:ne,at:T,rent:L.rent||l.rent,prevRent:l.rent}]); /* prevRent: 賃上げ成功例 (sales.html) */
+  if(L.rent&&L.rent!==l.rent)l.rent=L.rent;
+  l.end=ne;l.renewedStart=ns;l.renewal='更新済み';
+  GK.log('更新合意：新しい期間 '+GK.jp(ns)+'〜'+GK.jp(ne)+'（家賃 '+yen(l.rent)+'）',l.unit);
+  GK.save();undo.mark();renderAll();GK.toast('更新しました。新しい期間は '+GK.jp(ns)+'〜'+GK.jp(ne)+' です',undo);
+}
+function saveNotice(id){
+  var l=GK.lease(id);if(!l||l.status!=='有効')return;
+  /* shared with the 物件・台帳 page: same defaults, checks and 立会い task (ganki-data.js) */
+  var undo=GK.noticeSubmit(l,panel);if(!undo)return;
+  delete draft[id];renderAll();
+  var go=panel.querySelector('a[href^="turnover.html"]');if(go)go.focus();
+  GK.toast('退去の連絡を登録しました（退去日 '+GK.jp(l.notice.date)+'）',function(){undo();renderAll();GK.toast('元に戻しました')});
+}
+function cancelNotice(id){
+  var l=GK.lease(id);if(!l||!l.notice)return;var undo=snap([id]);
+  delete l.notice;GK.log('退去の連絡を取り消しました',l.unit);GK.save();undo.mark();renderAll();GK.toast('退去の連絡を取り消しました',undo);
+}
+
+/* ---------- 契約書から読み直す (ganki-docs.js) ----------
+   Compares the contract document with this lease (dates, 家賃, 共益費, 敷金, 支払日, 保証会社; 申込中: the 入居申込書 too).
+   The ticked items change the lease (looked up by id now), with a log entry and the usual snap() undo. */
+function openDocsLease(id){
+  var l=GK.lease(id);if(!l)return;
+  if(!GK.docs){GK.toast('書類の読み込みを開けませんでした。画面を開き直してください');return}
+  var x=info(l),tk=!!l.takeover;
+  var cur={start:l.startUnknown?'':l.start,end:l.endUnknown?'':l.end,rent:l.rent||!tk?l.rent:'',fee:l.fee||!tk?l.fee:'',dep:l.dep||!tk?l.dep:'',pay:l.pay||27,gua:l.gua||'なし'};
+  var F=[['start','start','契約の始まり'],['end','end','契約の終わり'],['rent','rent','家賃'],['fee','fee','共益費'],['dep','dep','敷金'],['pay','pay','支払日'],['gua','gua','保証会社']];
+  /* 申込中: the 入居申込書's contact details also update the person (電話・メール・緊急連絡先, the fields a tenant record has) */
+  var ap=l.status==='申込中',TF=[['tel','tel','電話'],['mail','mail','メール'],['emName','emLabel','緊急連絡先の名前'],['emTel','emTel','緊急連絡先の電話']];
+  if(ap)TF.forEach(function(f){F.push(['t.'+f[0],f[1],f[2]]);cur['t.'+f[0]]=x.t[f[0]]||''});
+  GK.docs.open({kinds:ap?['lease','guar','apply']:['lease','guar'],dup:false,
+    lead:x.p.n+' '+x.u.no+' '+x.t.n+' 様の契約と見比べます。チェックした項目で契約の内容'+(ap?'と入居者の連絡先':'')+'を直します。',
+    ctx:{person:{n:x.t.n,k:x.t.k,tel:x.t.tel,mail:x.t.mail,emName:x.t.emName,emTel:x.t.emTel},lease:{start:cur.start,end:l.end,rent:l.rent||'',fee:tk&&!l.fee?undefined:l.fee,dep:tk&&!l.dep?undefined:l.dep,pay:l.pay,gua:l.gua||''},prop:{n:x.p.n,no:x.u.no,fee:x.u.fee}},
+    fields:F.map(function(f){return {key:f[0],doc:f[1],label:f[2],cur:cur[f[0]]}}).concat([
+      {key:'_prop',doc:'propName',label:'物件名',cur:x.p.n,check:true},{key:'_room',doc:'roomNo',label:'部屋番号',cur:x.u.no,check:true},{key:'_who',doc:'name',label:'契約者',cur:x.t.n,check:true}]),
+    doneMsg:function(n){return '契約書から '+n+'項目を直しました。黄色の枠の項目を確かめてください'},
+    apply:function(vals){
+      var L=GK.lease(id);if(!L)return null;
+      /* the person's previous values come back with 元に戻す too (looked up by id at undo time) */
+      var tid=L.tenant,T0=GK.tenant(tid),tprev={},tch=[];
+      Object.keys(vals).forEach(function(k){if(k.indexOf('t.')===0&&T0){var f=k.slice(2);tprev[f]=Object.prototype.hasOwnProperty.call(T0,f)?T0[f]:undefined}});
+      var undo=snap([id],function(){var T1=GK.tenant(tid);if(!T1)return;Object.keys(tprev).forEach(function(f){if(tprev[f]===undefined)delete T1[f];else T1[f]=tprev[f]})}),ch=[],lab={start:'契約の始まり',end:'契約の終わり',rent:'家賃',fee:'共益費',dep:'敷金',pay:'支払日',gua:'保証会社'};
+      var ns=vals.start||L.start,ne=vals.end||L.end,dates=!(GK.parse(ns)&&GK.parse(ne)&&ns>=ne);
+      Object.keys(vals).forEach(function(k){
+        var v=vals[k];
+        if(k.indexOf('t.')===0){if(T0&&String(T0[k.slice(2)]||'')!==String(v)){T0[k.slice(2)]=v;tch.push(k)}return}
+        if(k==='start'||k==='end'){if(!dates||!GK.parse(v))return;L[k]=v;delete L[k==='start'?'startUnknown':'endUnknown']}
+        else if(k==='rent'||k==='fee'||k==='dep'){if(v==='')return;L[k]=GK.num(v)}
+        else if(k==='pay'){if(!v)return;L.pay=+v}
+        else if(k==='gua')L.gua=v==='なし'?'':String(v);
+        else return;
+        ch.push(k);
+      });
+      if(!ch.length&&!tch.length)return null;
+      var parts=[];if(ch.length)parts.push('契約（'+ch.map(function(k){return lab[k]}).join('・')+'）');if(tch.length)parts.push('入居者の連絡先（'+tch.map(function(k){return {'t.tel':'電話','t.mail':'メール','t.emName':'緊急連絡先','t.emTel':'緊急連絡先の電話'}[k]}).join('・')+'）');
+      GK.log('書類から読み直して直しました：'+parts.join('、'),L.unit);GK.save();undo.mark();
+      st.docMark={id:id,keys:ch.concat(tch)};renderAll();
+      return function(){st.docMark=null;undo()};
+    }});
+}
+
+/* ---------- panel ---------- */
+var panel=document.getElementById('panel'),scrim=document.getElementById('scrim');
+var mq=window.matchMedia('(min-width:1181px)');
+function layoutPanel(){
+  if(!st.panel){document.body.classList.remove('panel-side');scrim.hidden=true;panel.hidden=true;return}
+  var wide=mq.matches;panel.hidden=false;
+  document.body.classList.toggle('panel-side',wide);scrim.hidden=wide;
+  if(wide){panel.setAttribute('role','complementary');panel.removeAttribute('aria-modal')}else{panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true')}
+}
+if(mq.addEventListener)mq.addEventListener('change',layoutPanel);else mq.addListener(layoutPanel);
+function openPanel(p,focusPart){
+  if(p.type==='lease'){st.focusId=p.id;setHash('lease-'+p.id)}else if(st.panel==null){st.focusId=null}
+  if(!st.panel||st.panel.type!==p.type||st.panel.id!==p.id){st.histAll=false;st.docMark=null}
+  st.panel=p;renderPanel();layoutPanel();
+  document.querySelectorAll('.tbl tbody tr').forEach(function(tr){tr.classList.toggle('is-open',p.type==='lease'&&tr.dataset.id===p.id)});
+  setTimeout(function(){
+    var t=focusPart==='notice'?document.getElementById('nDate'):focusPart==='letter'?document.getElementById('sec-letter'):null;
+    if(t){t.scrollIntoView({block:'start'});t.focus()}else{var h=document.getElementById('panelTitle');if(h)h.focus()}
+  },0);
+}
+function closePanel(){
+  st.panel=null;st.docMark=null;layoutPanel();panel.innerHTML='';setHash(st.f?'filter-'+st.f:'');
+  document.querySelectorAll('.tbl tr.is-open').forEach(function(tr){tr.classList.remove('is-open')});
+  var b=st.focusId&&document.querySelector('[data-open="'+(window.CSS&&CSS.escape?CSS.escape(st.focusId):st.focusId)+'"]');if(b)b.focus();
+}
+function letterHtml(l){
+  var x=info(l),L=l.letter;
+  return '<div class="letter" id="letter-'+esc(l.id)+'" aria-label="更新案内の文面">'+
+    '<p class="l-date">'+jp(L.created)+'</p><p><b>'+esc(x.t.n)+' 様</b></p><h4>賃貸借契約 更新のご案内</h4>'+
+    '<p>いつもお世話になっております。ご入居中のお部屋の契約期間がまもなく終わりますので、更新についてご案内いたします。</p>'+
+    '<dl class="kv"><dt>お部屋</dt><dd>'+esc(x.p.n)+' '+esc(x.u.no)+'号室</dd>'+
+    '<dt>今の契約期間</dt><dd>'+(l.startUnknown||!l.start?'〜':jp(l.start)+'〜')+jp(l.end)+'</dd>'+
+    '<dt>更新後の期間</dt><dd><b>'+jp(L.start)+'〜'+jp(L.end)+'</b>（2年）</dd>'+
+    '<dt>家賃</dt><dd>'+yen(L.rent)+(L.rent!==l.rent?'（今は '+yen(l.rent)+'）':'（変更なし）')+'</dd>'+
+    '<dt>共益費</dt><dd>'+yen(L.fee)+'</dd>'+
+    '<dt>お返事の期限</dt><dd>'+jp(L.due)+'</dd></dl>'+
+    '<p>更新される場合は、同封の更新合意書にご署名のうえご返送ください。更新されない場合（解約）も、期限までにご連絡をお願いいたします。</p>'+
+    '<p class="l-from">GANKI 賃貸管理担当 '+esc(GK.ME)+'</p></div>';
+}
+function letterBlock(l,inList){
+  var r=rstat(l)[0],x=info(l);
+  var head=inList?'<div class="letter-head"><div><b>'+esc(x.t.n)+'様</b> <span class="cap">'+esc(x.p.n+' '+x.u.no)+'</span></div><span class="pill '+(r==='送付済み'?'info':'warn')+'">'+r+'</span></div>':'';
+  var edit=r==='案内作成済み'&&GK.can('act.renew')?'<div class="inline-field"><label for="rent-'+esc(l.id)+'">更新後の家賃</label><input id="rent-'+esc(l.id)+'" type="text" inputmode="numeric" data-rent="'+esc(l.id)+'" value="'+esc(l.letter.rent)+'"><span>円（送る前なら直せます）</span></div>':'';
+  var acts='<div class="panel-actions">'+(r==='案内作成済み'?'<button type="button" class="btn primary" data-act="send" data-id="'+esc(l.id)+'">送付済みにする</button>':'')+
+    (r==='送付済み'&&(GK.can('act.renewstep')||GK.can('act.notice'))?'<span class="cap" style="align-self:center">'+jp(l.letter.sent)+' 送付済み · 返事を受けたら：</span><button type="button" class="btn primary" data-act="agree" data-id="'+esc(l.id)+'">更新合意</button><button type="button" class="btn" data-act="cancel" data-id="'+esc(l.id)+'">退去の連絡</button>':'')+
+    (inList?'<button type="button" class="btn ghost" data-act="openLease" data-id="'+esc(l.id)+'">契約の詳細</button>':'')+'</div>';
+  return '<div class="letter-item">'+head+edit+letterHtml(l)+acts+'</div>';
+}
+function noticeBlock(l){
+  if(l.status!=='有効')return '';
+  if(l.notice){
+    var d=GK.days(T,l.notice.date);
+    return '<section aria-labelledby="sec-n"><h3 id="sec-n">退去の連絡（契約上の解約の申し出）</h3><div class="warnbox" style="flex-direction:column;align-items:flex-start;gap:6px">'+
+      '<span>退去日 <b>'+esc(GK.sdw(l.notice.date))+'</b>（'+(d>=0?'あと '+d+'日':(-d)+'日超過')+'）· 受付 '+jp(l.notice.received)+(l.notice.insp?' · 立会い '+jp(l.notice.insp):'')+'</span>'+
+      '<div class="panel-actions"><a class="btn primary" href="turnover.html#unit-'+esc(l.unit)+'">入居者の入れ替えへ</a><button type="button" class="btn ghost" data-act="undoNotice" data-id="'+esc(l.id)+'">退去の連絡を取り消す</button></div></div></section>';
+  }
+  /* ('date' in draft) keeps a cleared date empty, so 必須 shows instead of silently using the end date */
+  if(!GK.can('act.notice'))return '';
+  return '<section aria-labelledby="sec-n"><h3 id="sec-n">退去の連絡（契約上の解約の申し出）</h3><div class="formbox">'+GK.noticeForm(l,draft[l.id])+'</div></section>';
+}
+function leasePanel(l){
+  var x=info(l),r=rstat(l)[0],act=l.status==='有効'&&!l.notice;
+  var top='<div class="panel-actions">'+
+    (l.status==='申込中'?'<button type="button" class="btn primary" data-act="confirm" data-id="'+esc(l.id)+'">契約を確定（契約中にする）</button>':'')+
+    (l.status==='入居予定'&&l.start<=T?'<button type="button" class="btn primary" data-act="movein" data-id="'+esc(l.id)+'">入居済みにする（契約中へ）</button>':'')+
+    (act&&r==='未案内'?'<button type="button" class="btn primary" data-act="mk" data-id="'+esc(l.id)+'">更新案内を作成</button>':'')+
+    (act&&r==='まだ先'?'<button type="button" class="btn" data-act="mk" data-id="'+esc(l.id)+'">更新案内を作成（早めに）</button>':'')+
+    (act&&(r==='案内作成済み'||r==='送付済み')?'<button type="button" class="btn" data-act="toLetter">更新案内を見る</button>':'')+
+    (act?'<button type="button" class="btn" data-act="cancel" data-id="'+esc(l.id)+'">退去の連絡を登録</button>':'')+
+    (l.status==='有効'||l.status==='申込中'||l.status==='入居予定'?'<button type="button" class="btn" id="docLease" data-act="docLease" data-id="'+esc(l.id)+'">契約書から読み直す</button>':'')+
+    '<a class="btn" href="properties.html#room-'+esc(l.unit)+'">台帳を開く</a><a class="btn ghost" href="tenants.html#tenant-'+esc(l.tenant)+'">入居者を開く</a></div>'+
+    (l.status==='申込中'&&GK.can('act.confirm')?'<p class="cap">確定すると'+(l.start>T?' '+jp(l.start)+' の入居日までは「入居予定」、入居日から「契約中」になります。':'「契約中」になり、部屋は「入居中」になります。')+'</p>':'')+
+    (l.status==='入居予定'&&GK.can('act.movein')?'<p class="cap">'+(l.start>T?'入居日（'+jp(l.start)+'）までは「入居予定」です。入居日を過ぎたら「入居済みにする」を押します。':'入居日（'+jp(l.start)+'）を過ぎています。鍵を渡したら「入居済みにする」を押してください。')+'</p>':'')+
+    (l.status==='申込中'||l.status==='入居予定'?'<p class="err" id="cErr" role="alert"></p>':'');
+  var quickAgree=act&&GK.can('act.renewstep')&&r!=='更新済み'&&r!=='更新合意'&&r!=='送付済み'?'<p class="cap">電話などで更新の合意がすでに取れている場合は <button type="button" class="link" data-act="agree" data-id="'+esc(l.id)+'">更新合意にする</button></p>':'';
+  var letter=l.letter&&(r==='案内作成済み'||r==='送付済み')?'<section id="sec-letter" tabindex="-1" aria-labelledby="sec-l"><h3 id="sec-l">更新案内</h3>'+letterBlock(l,false)+'</section>':'';
+  /* AIで下書き (2026-10-19): 更新案内に添えるメールなどの下書き（この契約の名前・日付・金額で作る。確かめてからコピー） */
+  if(l.status==='有効'&&GK.ai&&GK.can('ai.write')&&GK.can('act.renew'))letter+='<section aria-labelledby="sec-ai"><h3 id="sec-ai">文面の下書き</h3><p class="cap">更新案内に添えるメールや、入居者への連絡の文面を下書きできます。</p><div style="margin-top:6px">'+
+    GK.ai.draftBtn({host:'aiDraft-'+l.id,unit:l.unit,lease:l.id,purpose:'更新案内',title:'更新案内などの文面'})+'</div><div id="aiDraft-'+esc(l.id)+'" style="margin-top:8px"></div></section>';
+  /* 「電話する」 (ganki-data.js): works without revealing; the call goes into this room's history at once */
+  var callT=x.t.tel&&typeof GK.callLink==='function'?' '+GK.callLink(x.t.tel,{name:x.t.n+' 様',role:l.status==='終了'?'旧入居者':l.status==='有効'?'入居者':'申込者',unit:l.unit,ref:'tenant:'+x.t.id}):'';
+  var tel=x.t.tel?(st.tel[x.t.id]?esc(typeof GK.formatTel==='function'?GK.formatTel(x.t.tel):x.t.tel):esc(GK.mask(x.t.tel))+' <button type="button" class="link" data-act="tel" data-id="'+esc(l.id)+'">番号を表示</button>')+callT:'未登録';
+  /* the items just re-read from the contract document (契約書から読み直す) are outlined until the panel shows another contract */
+  var dm=function(){var ks=[].slice.call(arguments),m=st.docMark&&st.docMark.id===l.id&&ks.some(function(k){return st.docMark.keys.indexOf(k)>=0});return m?[' class="gkd-filled"',' <span class="gkd-note">書類から入れました</span>']:['','']};
+  var kv='<dl class="kv"><dt>物件・号室</dt><dd>'+esc(x.p.n+' '+x.u.no)+'号室 <span class="cap">'+esc(x.u.lay||'')+'</span></dd>'+
+    '<dt>入居者</dt><dd>'+esc(x.t.n)+' 様 <span class="cap">'+esc(x.t.k)+'</span></dd><dt>電話</dt><dd>'+tel+'</dd>'+
+    '<dt>契約期間</dt><dd'+dm('start','end')[0]+'>'+startTxt(l)+'〜'+endTxt(l)+(l.endUnknown?'<br><span class="cap">終わりは契約書で確認中（2年として仮に入れています）</span>':'')+dm('start','end')[1]+'</dd><dt>家賃</dt><dd'+dm('rent')[0]+'>'+yenOr(l.rent,{takeover:1})+dm('rent')[1]+'</dd><dt>共益費</dt><dd'+dm('fee')[0]+'>'+yenOr(l.fee,l)+dm('fee')[1]+'</dd>'+
+    '<dt>敷金</dt><dd'+dm('dep')[0]+'>'+yenOr(l.dep,l)+dm('dep')[1]+'</dd><dt>支払日</dt><dd'+dm('pay')[0]+'>毎月'+(l.pay===31?'末':(l.pay||27))+'日'+dm('pay')[1]+'</dd><dt>保証会社</dt><dd'+dm('gua')[0]+'>'+(l.gua?esc(l.gua):'なし')+dm('gua')[1]+'</dd>'+
+    (l.takeover?'<dt>引継ぎ</dt><dd>前の管理会社から引き継いだ契約です。'+(l.startUnknown?'契約の始まりは確認中です。':'')+'足りない項目は契約書で確かめてください。</dd>':'')+
+    '<dt>契約番号</dt><dd>'+esc(l.id)+'</dd>'+
+    (l.renewals&&l.renewals.length?'<dt>更新の記録</dt><dd>'+l.renewals.map(function(v){return jp(v.at)+' 合意 → '+jp(v.start)+'〜'+jp(v.end)}).join('<br>')+'</dd>':'')+
+    (l.moveout?'<dt>退去日</dt><dd>'+jp(l.moveout.date)+'</dd><dt>退去の理由</dt><dd>'+esc(l.moveout.reason||'')+'</dd><dt>精算</dt><dd>'+esc(l.moveout.settle||'')+'</dd>':'')+'</dl>';
+  var past=GK.leasesOf(l.unit);
+  var hist='<ul class="rows hist-room">'+past.map(function(o){var t=GK.tenant(o.tenant)||{n:'—'};return '<li class="'+(o.id===l.id?'cur-lease':'')+'"><div class="main-t">'+(o.id===l.id?'<b>'+esc(t.n)+'様</b>（この契約）':'<button type="button" class="link" data-act="openLease" data-id="'+esc(o.id)+'">'+esc(t.n)+'様</button>')+'<div class="sub">'+startTxt(o)+'〜'+jp(o.end)+(o.moveout?' · '+esc(o.moveout.reason):'')+'</div></div><span class="end">'+spill(o)+'</span></li>'}).join('')+'</ul>';
+  var hs=GK.db.hist.filter(function(h){return h.unit===l.unit}),hshow=st.histAll?hs:hs.slice(0,5);
+  var log=hs.length?'<ul class="rows">'+hshow.map(function(h){return '<li><div class="main-t">'+(typeof GK.callPill==='function'?GK.callPill(h.t):'')+esc(h.t)+'<div class="sub">'+esc(h.at)+' · '+esc(h.who)+'</div></div></li>'}).join('')+'</ul>'+(hs.length>5?'<button type="button" class="link" data-act="histMore">'+(st.histAll?'最新の5件だけ表示':'ほか '+(hs.length-5)+'件を表示')+'</button>':''):'<p class="empty">この部屋の対応の記録はまだありません。</p>';
+  var docs=['賃貸借契約書.pdf','重要事項説明書.pdf'];if(l.letter)docs.push('更新のご案内.pdf');if(l.renewals&&l.renewals.length)docs.push('更新合意書.pdf');
+  var docH='<ul class="rows docs">'+docs.map(function(d){return '<li><div class="main-t">'+esc(d)+'<div class="sub">'+(d==='更新のご案内.pdf'?jp(l.letter.created)+' 作成':d==='更新合意書.pdf'?jp(l.renewals[l.renewals.length-1].at)+' 合意':l.takeover?'前の管理会社から受け取り':startTxt(l)+' 契約時')+'</div></div><button type="button" class="act" data-act="doc" data-doc="'+esc(d)+'" aria-label="'+esc(d)+' を開く">開く</button></li>'}).join('')+'</ul>';
+  return {title:esc(x.t.n)+'様 · '+esc(x.p.n+' '+x.u.no),
+    body:'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+spill(l)+rpill(l)+daysCell(l)+'</div>'+top+quickAgree+letter+noticeBlock(l)+
+      /* 滞納の経過 (2026-10-19, GK.dun in ganki-data.js): shown only while rent is unpaid or after an earlier 滞納 */
+      (GK.dun&&GK.can('money.dunning')?GK.dun.timelineHtml(l.id):'')+
+      '<section aria-labelledby="sec-k"><h3 id="sec-k">契約の内容</h3>'+kv+'</section>'+
+      '<section aria-labelledby="sec-h"><h3 id="sec-h">この部屋の契約（これまでの入居者）</h3>'+hist+'</section>'+
+      '<section aria-labelledby="sec-r"><h3 id="sec-r">この部屋の対応の記録</h3>'+log+'</section>'+
+      '<section aria-labelledby="sec-d"><h3 id="sec-d">書類</h3>'+docH+'</section>'+
+      /* 書類（Dropbox） (2026-10-19, ganki-dropbox.js): the documents of this contract's room */
+      (GK.dbx&&GK.can('doc.dbx')?GK.dbx.sectionHtml({unit:l.unit,key:'l-'+l.id,canOpen:GK.can('doc.dbxopen'),canLink:GK.can('doc.dbxlink')}):'')};
+}
+function lettersPanel(ids){
+  var ls=ids.map(GK.lease).filter(function(l){return l&&l.letter&&(l.renewal==='案内作成済み'||l.renewal==='送付済み')&&!l.notice});
+  var cr=ls.filter(function(l){return l.renewal==='案内作成済み'}).map(function(l){return l.id});
+  return {title:'更新案内（'+ls.length+'件）',
+    body:ls.length?'<div class="panel-actions">'+(cr.length?'<button type="button" class="btn primary" data-act="sendIds" data-ids="'+esc(cr.join(' '))+'">'+cr.length+'件すべて送付済みにする</button>':'<span class="empty-ok">すべて送付済みです</span>')+'</div>'+
+      '<p class="cap">名前・期間・家賃は契約から自動で入れています。印刷やメールで送ったあとに「送付済みにする」を押してください（1クリックで記録されます）。</p>'+
+      ls.map(function(l){return letterBlock(l,true)}).join(''):'<p class="empty">表示できる案内はありません。</p>'};
+}
+function renderPanel(){
+  if(!st.panel)return;
+  var c;
+  if(st.panel.type==='lease'){var l=GK.lease(st.panel.id);if(!l){closePanel();return}c=leasePanel(l)}
+  else c=lettersPanel(st.panel.ids);
+  var keep=panel.querySelector('.panel-body'),sc=keep?keep.scrollTop:0;
+  panel.innerHTML='<div class="panel-head"><h2 id="panelTitle" class="panel-title" tabindex="-1">'+c.title+'</h2><button type="button" class="btn ghost" data-act="close">閉じる</button></div><div class="panel-body">'+gateHtml(c.body)+'</div>';
+  if(keep)panel.querySelector('.panel-body').scrollTop=sc;
+}
+
+/* ---------- events ---------- */
+document.getElementById('stats').addEventListener('click',function(e){
+  var b=e.target.closest('[data-f]');if(!b)return;
+  st.f=st.f===b.dataset.f?'':b.dataset.f;st.limit=20;st.sel.clear();
+  if(!st.panel)setHash(st.f?'filter-'+st.f:'');
+  renderHead();renderList();
+});
+var qEl=document.getElementById('q');
+function onQ(){st.q=qEl.value.trim();st.limit=20;renderList()}
+qEl.addEventListener('input',function(e){if(e.isComposing)return;onQ()});
+qEl.addEventListener('compositionend',onQ);
+document.getElementById('sort').addEventListener('change',function(){st.sort=this.value;renderList()});
+document.getElementById('list').addEventListener('change',function(e){
+  var c=e.target.closest('input.sel');if(!c)return;
+  if(c.checked)st.sel.add(c.dataset.id);else st.sel.delete(c.dataset.id);renderBulk();
+});
+document.getElementById('list').addEventListener('click',function(e){
+  var o=e.target.closest('[data-open]');
+  if(o){openPanel({type:'lease',id:o.dataset.open});return}
+  if(e.target.closest('a,button,input,label,select'))return;
+  var tr=e.target.closest('tbody tr');if(tr)openPanel({type:'lease',id:tr.dataset.id});
+});
+scrim.addEventListener('click',closePanel);
+panel.addEventListener('input',function(e){
+  var d=e.target.dataset.draft;if(!d||!st.panel)return;
+  (draft[st.panel.id]=draft[st.panel.id]||{})[d]=e.target.value;
+  e.target.removeAttribute('aria-invalid');
+  var er=document.getElementById('nErr');if(er)er.textContent='';
+});
+panel.addEventListener('change',function(e){
+  var id=e.target.dataset.rent;if(!id||!GK.can('act.renew'))return;
+  var l=GK.lease(id),v=GK.num(e.target.value);if(!l||!l.letter)return;
+  if(!v){e.target.value=l.letter.rent;GK.toast('家賃は数字で入れてください');return}
+  if(v===l.letter.rent)return;
+  var undo=snap([id]);l.letter.rent=v;GK.log('更新案内の家賃を '+yen(v)+' に直しました',l.unit);GK.save();undo.mark();
+  e.target.value=v;var el=document.getElementById('letter-'+id);if(el)el.outerHTML=letterHtml(l);
+  GK.toast('更新後の家賃を '+yen(v)+' にしました',undo);
+});
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]');if(!b)return;
+  var a=b.dataset.act,id=b.dataset.id;
+  if(!actOk(a))return;
+  switch(a){
+    case 'clearF':st.f='';st.sel.clear();renderHead();renderList();break;
+    case 'clearQ':qEl.value='';st.q='';renderList();qEl.focus();break;
+    case 'more':st.limit=Infinity;renderList();break;
+    case 'less':st.limit=20;renderList();break;
+    case 'selAll':{var un=filtered().filter(function(l){return rstat(l)[0]==='未案内'}).map(function(l){return l.id});
+      var all=un.every(function(x){return st.sel.has(x)});un.forEach(function(x){all?st.sel.delete(x):st.sel.add(x)});
+      document.querySelectorAll('#list input.sel').forEach(function(c){c.checked=st.sel.has(c.dataset.id)});renderBulk();
+      var nb=document.querySelector('[data-act="selAll"]');if(nb)nb.focus();break}
+    case 'mkSel':createLetters(Array.from(st.sel));break;
+    case 'mk':createLetters([id]);break;
+    case 'view':openPanel({type:'lease',id:id},'letter');break;
+    case 'toLetter':{var s=document.getElementById('sec-letter');if(s){s.scrollIntoView({block:'start'});s.focus()}break}
+    case 'viewLetters':openPanel({type:'letters',ids:createdIds()});break;
+    case 'send':sendLetters([id]);break;
+    case 'sendAll':sendLetters(createdIds());break;
+    case 'sendIds':sendLetters(b.dataset.ids.split(' '));break;
+    case 'agree':agree(id);break;
+    case 'confirm':confirmLease(id);break;
+    case 'movein':moveIn(id);break;
+    case 'cancel':openPanel({type:'lease',id:id},'notice');break;
+    case 'saveNotice':saveNotice(id);break;
+    case 'undoNotice':cancelNotice(id);break;
+    case 'openLease':openPanel({type:'lease',id:id});break;
+    case 'histMore':st.histAll=!st.histAll;renderPanel();break;
+    case 'close':closePanel();break;
+    case 'tel':{var l=GK.lease(id),t=l&&GK.tenant(l.tenant);if(!t)break;st.tel[t.id]=true;GK.log('入居者の電話番号を表示しました（'+t.n+'様）',l.unit);GK.save();renderPanel();GK.toast('番号を表示しました（表示したことを記録しました）');break}
+    case 'docLease':openDocsLease(id);break;
+    case 'doc':GK.toast('「'+b.dataset.doc+'」を開きました');break;
+  }
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&st.panel&&!e.isComposing){e.preventDefault();closePanel()}
+});
+
+/* ---------- another tab saved (ganki-data.js reloads GK.db, then calls this) ----------
+   The list and counts always update. The panel re-renders too, unless a 退去の連絡 draft or the letter's rent box
+   is being typed in: then it keeps the input and shows a note; the next save there re-renders it. */
+var composing=false,pending=false;
+document.addEventListener('compositionstart',function(){composing=true});
+document.addEventListener('compositionend',function(){composing=false;if(pending){pending=false;setTimeout(refresh,0)}});
+function panelBusy(){
+  if(!st.panel||st.panel.type!=='lease'||!GK.lease(st.panel.id))return false;
+  var d=draft[st.panel.id];if(d&&Object.keys(d).length)return true;
+  var a=document.activeElement;return !!(a&&a.dataset&&a.dataset.rent&&panel.contains(a)&&GK.can('act.renew'));
+}
+function refresh(){
+  var a=document.activeElement,aid=a&&a.id;
+  /* 機能の設定: 退去の連絡 was turned OFF while its form has input: drop the draft (the form is no longer drawn) */
+  if(!GK.can('act.notice')&&Object.keys(draft).length){var open=st.panel&&draft[st.panel.id];draft={};if(open)GK.offToast('退去の連絡')}
+  Array.from(st.sel).forEach(function(id){if(!GK.lease(id))st.sel.delete(id)});
+  if(panelBusy()){
+    renderHead();renderList();updateBadge();
+    var n=document.getElementById('syncNote'),pb=panel.querySelector('.panel-body');
+    if(!n&&pb){pb.insertAdjacentHTML('afterbegin','<p class="sync-note" id="syncNote" role="status"></p>');n=document.getElementById('syncNote')}
+    if(n){n.textContent='ほかの画面で変更がありました。保存後に最新にします';n.hidden=false}
+  }else renderAll();
+  if(aid){var f=document.getElementById(aid);if(f&&f!==a)try{f.focus()}catch(e){}}
+}
+window.GKrefresh=function(){if(composing){pending=true;return}try{refresh()}catch(e){if(window.console)console.error(e)}};
+
+/* ---------- start ---------- */
+(function(){
+  var f=GK.hash('filter');if(f&&fdef(f))st.f=f;
+  renderHead();renderList();updateBadge();
+  var lid=GK.hash('lease'),room=GK.hash('room');
+  if(room){var a=GK.activeLease(room)||GK.leasesOf(room)[0];if(a)lid=a.id}
+  if(lid&&GK.lease(lid))openPanel({type:'lease',id:lid});
+})();
+})();
+</script></body></html>

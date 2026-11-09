@@ -1,0 +1,2085 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GANKI 賃貸管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: GANKI CRM shell (dark sidebar + light work area) with a 12-column block board that switches into an edit mode. Colors follow GANKI's own globals.css tokens. */
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --surface-2:#edf0f5; --fg:#1b2535; --muted:#596579; --line:#dfe4ec; --input:#cbd3df;
+  --primary:#3359f2; --primary-fg:#ffffff; --primary-soft:#e9eefb;
+  --sidebar:#151b26; --sidebar-fg:#f5f7fb; --sidebar-muted:#aeb9cb; --sidebar-active:#253044;
+  --danger:#b4332b; --danger-soft:#fbe9e7; --warn:#8a5a00; --warn-soft:#fdf1d8; --ok:#1d7148; --ok-soft:#e1f3e9; --info:#2c4fd6; --info-soft:#e9eefb;
+  --scrim:rgba(10,14,20,.35);
+  --shadow:0 1px 2px rgba(27,37,53,.06),0 4px 14px rgba(27,37,53,.06);
+  --font:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --r:10px;
+  color-scheme:light; /* light only: dark mode removed at the user's request */
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+h1,h2,h3{text-wrap:balance;margin:0}
+
+.app{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:100%}
+/* shell: the same sidebar + 「メニュー」 topbar as the other pages (rules copied from ganki-base.css; filled by GK.shell) */
+.side{background:var(--sidebar);color:var(--sidebar-fg);padding-block:18px;padding-inline:12px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{display:flex;align-items:center;gap:10px;padding-inline:8px;font-weight:700;letter-spacing:.08em;color:var(--sidebar-fg);text-decoration:none}
+.logo-mark{width:28px;height:28px;border-radius:7px;background:var(--primary);display:grid;place-items:center;font-size:13px;color:var(--primary-fg);letter-spacing:0}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-label{font-size:11px;color:var(--sidebar-muted);letter-spacing:.08em;padding:8px 10px 4px}
+.nav a{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:7px;color:var(--sidebar-muted);font-size:13.5px;text-decoration:none}
+.nav a:hover{background:var(--sidebar-active);color:var(--sidebar-fg)}
+.nav a[aria-current="page"]{background:var(--sidebar-active);color:var(--sidebar-fg);font-weight:500}
+.nav a:focus-visible{outline:2px solid var(--primary)}
+.side-foot{margin-top:auto;font-size:12px;color:var(--sidebar-muted);padding-inline:10px}
+.topbar{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{display:none;position:fixed;inset:0 auto 0 0;width:240px;z-index:50;height:auto}
+  body.nav-open .side{display:flex}
+  body.nav-open::after{content:"";position:fixed;inset:0;background:var(--scrim);z-index:49}
+  .topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--sidebar);color:var(--sidebar-fg);position:sticky;top:0;z-index:30}
+  .topbar button{border:1px solid #39465c;background:none;color:var(--sidebar-fg);border-radius:7px;padding:4px 10px}
+  .topbar b{letter-spacing:.06em}
+}
+
+.main{min-width:0;padding-block:16px 40px;padding-inline:24px;display:flex;flex-direction:column;gap:14px}
+
+.proto{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 12px;border:1px dashed var(--input);border-radius:var(--r);background:var(--surface-2)}
+.proto-tag{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:5px 12px;border-radius:6px;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg);font-weight:500}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.proto-note{font-size:12px;color:var(--muted);min-width:0;margin:0}
+
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.head h1{font-size:22px;font-weight:700}
+.head .date{font-size:13px;color:var(--muted)}
+.head-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:var(--input)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-fg);font-weight:500}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+kbd{font-family:inherit;font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--muted);background:var(--surface-2)}
+.btn svg{width:15px;height:15px}
+
+.quick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.quick-label{font-size:12px;color:var(--muted);font-weight:500;margin-right:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:13px}
+.chip:hover{border-color:var(--primary)}
+.quick.editing .chip{background:var(--surface);border-style:dashed;cursor:grab;padding-right:6px}
+.chip .x{border:0;background:transparent;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:var(--muted);padding:0}
+.chip .x:hover{background:var(--danger-soft);color:var(--danger)}
+.quick.editing .chip.add{border-style:dashed;background:transparent;color:var(--primary);cursor:pointer;padding-right:12px}
+.chip.drop-before{box-shadow:-3px 0 0 var(--primary)}
+.chip.drop-after{box-shadow:3px 0 0 var(--primary)}
+.pop-wrap{position:relative}
+.pop{position:absolute;top:calc(100% + 6px);left:0;z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:6px;width:220px;display:flex;flex-direction:column}
+.pop button{border:0;background:transparent;text-align:left;padding:7px 10px;border-radius:6px;font-size:13px}
+.pop button:hover{background:var(--surface-2)}
+.pop .empty{font-size:12px;color:var(--muted);padding:8px 10px}
+
+.editbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:var(--r);background:var(--primary-soft);border:1px solid var(--primary)}
+.editbar p{margin:0;font-size:13px;min-width:0;flex:1 1 260px}
+.editbar strong{color:var(--primary)}
+.editbar .group{display:flex;gap:8px;flex-wrap:wrap}
+
+.tip{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);font-size:13px}
+.tip p{margin:0;min-width:0;flex:1 1 260px}
+
+/* blocks keep their own height: a short block next to a tall one no longer gets an empty band at the bottom */
+.board{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;align-items:start}
+.block{grid-column:span var(--w,6);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-width:0;position:relative;transition:box-shadow .15s,outline-color .15s}
+.block[data-h="s"]{min-height:150px}.block[data-h="m"]{min-height:250px}.block[data-h="l"]{min-height:380px}
+.block-head{display:flex;align-items:center;gap:8px;padding:12px 14px 6px}
+.block-head h2{font-size:15px;font-weight:700;flex:1;min-width:0}
+.block-head .meta{font-size:12px;color:var(--muted)}
+.collapse{border:0;background:transparent;padding:4px;border-radius:6px;color:var(--muted);display:none}
+.block-body{padding:4px 14px 14px;min-width:0;flex:1}
+.block.flash{animation:flash 1.2s ease}
+@keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--primary)}100%{box-shadow:0 0 0 0 transparent}}
+
+.editing-board .block{outline:2px dashed var(--input);outline-offset:-1px;cursor:grab;border-color:transparent}
+.editing-board .block:hover{outline-color:var(--primary)}
+.editing-board .block-body{pointer-events:none;opacity:.5;user-select:none}
+.block.dragging{opacity:.35}
+.block.drop-before{box-shadow:-5px 0 0 var(--primary)}
+.block.drop-after{box-shadow:5px 0 0 var(--primary)}
+.block.drop-above{box-shadow:0 -5px 0 var(--primary)}
+.block.drop-below{box-shadow:0 5px 0 var(--primary)}
+
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 14px 8px}
+.handle{border:1px solid var(--line);background:var(--surface-2);border-radius:7px;width:30px;height:28px;display:grid;place-items:center;cursor:grab;padding:0}
+.handle svg{width:14px;height:14px;color:var(--muted)}
+.mini{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.mini button{border:0;background:var(--surface);padding:3px 8px;font-size:12px;color:var(--muted);border-right:1px solid var(--line)}
+.mini button:last-child{border-right:0}
+.mini button[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg)}
+.mini-label{font-size:11px;color:var(--muted);margin-left:4px}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;height:28px;min-width:28px;display:inline-grid;place-items:center;padding:0 6px;color:var(--muted)}
+.icon-btn:hover{color:var(--fg);border-color:var(--input)}
+.icon-btn:disabled{opacity:.4;cursor:not-allowed}
+.icon-btn svg{width:15px;height:15px}
+.tools .spacer{flex:1}
+
+.confirm{margin:0 14px 10px;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--fg);font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.confirm p{margin:0;flex:1 1 220px}
+
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.stat{flex:1 1 90px;padding:8px 10px;border-radius:8px;background:var(--surface-2);min-width:0}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:700;line-height:1.3}
+.stat .v small{font-size:12px;font-weight:500;color:var(--muted);margin-left:2px}
+.stat.danger{background:var(--danger-soft)}.stat.danger .v{color:var(--danger)}
+.stat.warn{background:var(--warn-soft)}.stat.warn .v{color:var(--warn)}
+.stat.info{background:var(--info-soft)}.stat.info .v{color:var(--info)}
+.stat.ok{background:var(--ok-soft)}.stat.ok .v{color:var(--ok)}
+.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.rows li{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);min-width:0}
+.rows li:first-child{border-top:0}
+.rows .main-t{flex:1;min-width:0}
+.rows .sub{font-size:12px;color:var(--muted)}
+.rows .end{font-size:12.5px;color:var(--muted);white-space:nowrap;text-align:right}
+.rows .when{font-size:12.5px;color:var(--muted);white-space:nowrap;min-width:5.5em}
+.num{font-weight:500;color:var(--fg)}
+.pill{display:inline-block;font-size:11.5px;font-weight:500;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.pill.danger{background:var(--danger-soft);color:var(--danger)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.info{background:var(--info-soft);color:var(--info)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.mute{background:var(--surface-2);color:var(--muted)}
+.search{display:flex;gap:8px;margin-bottom:8px}
+.search input{flex:1;min-width:0;border:1px solid var(--input);border-radius:8px;padding:7px 10px;background:var(--surface)}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.cap{font-size:12px;color:var(--muted)}
+.code{font-size:12px;color:var(--muted);margin-right:6px}
+.meter{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden;display:flex}
+.meter span{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:4px 8px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px 7px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.spark{width:100%;height:64px;display:block}
+[hidden]{display:none!important}
+/* ---- each card rearranges its own content to its own size (container queries) ----
+   narrow card: fewer columns, actions on their own line; wide card: lists flow into columns */
+.block{container-type:inline-size}
+@container (max-width:460px){
+  .block .today-bar .cap{display:none}
+  .block .stat{padding:6px 8px;flex-basis:70px}
+  .block .stat .v{font-size:17px}
+  .block .rows li.trow{flex-wrap:wrap}
+  .block .rows li.trow .end{width:100%;justify-content:space-between}
+  .block .rows li.horow{grid-template-columns:minmax(0,1fr) auto}
+  .block .rows li.horow .ho-n{grid-column:1 / -1}
+  .block .rows li.horow .ho-due{grid-column:1;flex-direction:row;gap:6px;align-items:center}
+  .block .week{grid-template-columns:repeat(7,64px);overflow-x:auto;padding-bottom:4px}
+  .block .occ-sub{text-align:left}
+  .block .selbar{flex-direction:column;align-items:stretch}
+}
+@container (min-width:700px){
+  #blk-history .rows,#blk-vacancy .rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}
+  #blk-history .rows li:nth-child(2),#blk-vacancy .rows li:nth-child(2){border-top:0}
+  .block#blk-moveout .check{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
+  #blk-occupancy .block-body{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);grid-template-areas:"h c" "g c" "m m";gap:4px 20px;align-items:start}
+  #blk-occupancy .occ-head{grid-area:h;flex-direction:column;align-items:flex-start}
+  #blk-occupancy .occ-sub{text-align:left}
+  #blk-occupancy .occ-grow{grid-area:g}
+  #blk-occupancy .occ-chart{grid-area:c;max-height:170px}
+  #blk-occupancy .occ-months{grid-area:m}
+  #blk-occupancy .occ-ctl{grid-area:m}
+}
+@container (min-width:1000px){
+  #blk-vacancy .rows{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #blk-vacancy .rows li:nth-child(3){border-top:0}
+}
+/* wide 管理台帳を探す: search box on the left, results flow in columns on the right */
+#blk-search #search-results .rows{display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;margin-top:4px}
+#blk-search #search-results .rows li{flex:1 1 220px;max-width:340px;border:1px solid var(--line);border-top:1px solid var(--line);border-radius:8px;padding:8px 12px;align-items:center;background:var(--surface)}
+#blk-search #search-results .rows li:hover{border-color:var(--primary)}
+#blk-search #search-results .rows .code{display:block;font-size:11px;color:var(--muted);margin-bottom:1px}
+#blk-search #search-results .cap{margin-top:10px}
+.occ-head{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.occ-sub{font-size:12px;color:var(--muted);text-align:right}
+.occ-grow{font-size:12px;color:var(--muted);margin:2px 0 0}
+.occ-chart{width:100%;height:auto;display:block;max-height:150px}
+.occ-months{display:flex;flex-wrap:wrap;width:100%}
+.occ-months button{flex:1 1 0;padding:4px 0;font-size:12px}
+/* 2026-10-19: 期間 chips + (longer periods) the shared month picker under the chart */
+.occ-ctl{display:flex;flex-direction:column;gap:6px;min-width:0}
+.occ-period{width:100%}
+.occ-period button{flex:1 1 0;padding:4px 0;font-size:12px}
+.occ-ctl .gk-mpw{align-items:stretch;width:100%}
+.occ-ctl .gk-mp{width:100%}
+.occ-ctl .gk-mp select{flex:1 1 auto}
+.occ-note{margin:0;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.big{font-size:28px;font-weight:700;line-height:1.2}
+.big small{font-size:13px;color:var(--muted);font-weight:500;margin-left:6px}
+.bar-row{display:grid;grid-template-columns:5.5em minmax(0,1fr) 2.5em;gap:8px;align-items:center;font-size:13px;padding:3px 0}
+.bar-row .bar{height:10px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.bar-row .bar span{display:block;height:100%;background:var(--primary);border-radius:4px}
+.bar-row .bar span.warn{background:var(--warn)}
+.bar-row .n{text-align:right;font-weight:500}
+.notes{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.note{background:var(--warn-soft);border-radius:6px;padding:8px 10px;font-size:13px}
+.note .sub{font-size:11.5px;color:var(--muted);display:block;margin-top:4px}
+.loan dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:13px}
+.loan dt{color:var(--muted)}
+.loan dd{margin:0;text-align:right;font-weight:500}
+.loan .result{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--primary-soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.loan .result b{font-size:18px}
+.link{border:0;background:transparent;color:var(--primary);padding:0;font-size:13px;margin-top:8px}
+.sample-note{font-size:12px;color:var(--muted);margin:0}
+
+/* rental-staff helpers */
+.act{border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:12px;padding:2px 8px;color:var(--muted);white-space:nowrap}
+.act:hover{color:var(--fg);border-color:var(--input)}
+.act.ok{color:var(--ok);border-color:var(--ok)}
+.act.ok:hover{background:var(--ok-soft)}
+.task-act{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+.rows li.done .main-t{color:var(--muted);text-decoration:line-through}
+.done-head{font-size:12px;color:var(--muted);margin-top:10px;padding-top:6px;border-top:1px dashed var(--line)}
+.rowbtn{border:0;background:transparent;padding:0;text-align:left;cursor:pointer;flex:1;min-width:0}
+.rowbtn:hover .t1{color:var(--primary);text-decoration:underline}
+.rows .end .t2{display:block}
+.empty-ok{padding:14px 12px;border-radius:8px;background:var(--ok-soft);color:var(--ok);font-size:13px;margin:0}
+.ho-warn{font-size:12px;color:var(--danger)}
+.check{display:flex;flex-direction:column}
+.check label{display:flex;gap:8px;align-items:center;padding:5px 0;font-size:13px;cursor:pointer;border-top:1px solid var(--line)}
+.check label:first-child{border-top:0}
+.check input,td input[type="checkbox"],.panel-body input[type="checkbox"]{width:16px;height:16px;accent-color:var(--primary);margin:0;flex-shrink:0}
+.check label.done span{color:var(--muted);text-decoration:line-through}
+.mo-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline;margin-bottom:6px}
+.selbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:13px}
+.selbar .group{display:flex;gap:6px;flex-wrap:wrap}
+.note{position:relative;padding-right:26px}
+.note .del{position:absolute;top:4px;right:4px;border:0;background:transparent;color:var(--muted);padding:3px;border-radius:4px;display:grid;place-items:center}
+.note .del:hover{color:var(--danger)}
+.note .pill{margin-right:4px}
+.note-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.note-form input{flex:1 1 140px;min-width:0}
+.note-form input,.note-form select,.field input,.field select,.field textarea{border:1px solid var(--input);border-radius:8px;padding:6px 10px;background:var(--surface)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.field textarea{resize:vertical;min-height:72px}
+.tpls{display:flex;gap:6px;flex-wrap:wrap}
+.err{font-size:12px;color:var(--danger);margin:0}
+.panel-body{overflow:auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:16px}
+.panel-body h3{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.06em;margin-bottom:6px}
+.room-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;font-size:13px;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;min-width:0}
+.tel{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
+.notice{font-size:12px;color:var(--muted);margin:6px 0 0}
+.panel-actions{display:flex;gap:8px;flex-wrap:wrap}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px}
+
+/* round 3 */
+.toast{display:flex;gap:12px;align-items:center}
+.toast button{border:0;background:transparent;color:var(--primary-soft);font-weight:700;padding:0;text-decoration:underline;white-space:nowrap}
+.today-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.today-bar .seg button{padding:3px 10px;font-size:12px}
+.who{font-size:11.5px;color:var(--muted);margin-left:6px}
+.who.me{color:var(--primary);font-weight:500}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.day{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.day:hover{border-color:var(--primary)}
+.day[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-soft)}
+.day .dw{font-size:11px;color:var(--muted)}
+.day .dd{font-size:15px;font-weight:700}
+.day .dc{font-size:11px;min-height:16px}
+.day .dot{display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:var(--primary);color:var(--primary-fg);font-weight:700}
+.day.sun .dw{color:var(--danger)}.day.sat .dw{color:var(--info)}
+.day.today .dd{color:var(--primary)}
+.week-list{margin-top:8px}
+.week-over{margin-top:6px}
+.recent{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-basis:100%;padding-top:6px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+.recent .chip{font-size:12px;padding:3px 10px;background:var(--surface)}
+.contacts li{align-items:center}
+.msg-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.msg-tabs .act[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.msg{width:100%;min-height:150px;border:1px solid var(--input);border-radius:8px;padding:8px 10px;background:var(--surface-2);font-size:13px;line-height:1.7;resize:vertical}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13px;margin:0;align-items:center}
+.keys dd{margin:0}
+
+.greet{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 14px;border-radius:var(--r);background:var(--primary-soft);border:1px solid var(--line);font-size:13.5px;margin-bottom:10px}
+.greet p{margin:0;flex:1 1 320px;min-width:0}
+.greet .red{color:var(--danger)}
+.late{display:block;font-size:11px;color:var(--danger);font-weight:500}
+/* 滞納の段階 (2026-10-19) */
+.stat.dun{background:var(--surface)}button.stat.dun{border-color:var(--danger-soft)}.stat.dun .v{color:var(--danger)}button.stat.dun.on{border-color:var(--danger)}
+.rows li.trow.dun-row{flex-wrap:wrap}
+.dun-row .dun-note,.dun-row .dun-ai{flex:1 0 100%;width:100%;min-width:0}
+.dun-ai:empty{display:none}
+.dun-note .pill{white-space:normal}
+.dun-sum{font-size:12.5px;margin:0 0 6px}.dun-sum .cap{margin-left:6px}
+.dun-wait-h{font-size:12.5px;color:var(--muted);margin:10px 0 2px;font-weight:500}
+.late.dun-muted{color:var(--muted)}
+/* handover list + property panel */
+.ho-start{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:10px}
+.ho-start .cap{flex:1 1 220px;min-width:0}
+.hof{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.fchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted)}
+.fchip b{color:var(--fg);margin-left:2px}
+.fchip.hot b{color:var(--danger)}
+.fchip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+.fchip[aria-pressed="true"] b{color:var(--primary-fg)}
+/* one row per takeover (GK.takeovers): name | 5-step bar | next + warnings | due | 続きから */
+.rows li.horow{display:grid;grid-template-columns:minmax(7em,1fr) auto minmax(0,1.6fr) auto auto;gap:6px 10px;align-items:center;padding:8px 0}
+.ho-name{text-decoration:none;color:inherit}
+.ho-name .t1{font-weight:500}
+.ho-name:hover .t1{color:var(--primary);text-decoration:underline}
+.ho-name .pill{margin-left:6px}
+.msteps{display:inline-flex;gap:2px}
+.msteps i{width:12px;height:6px;border-radius:2px;background:var(--surface-2)}
+.msteps i.on{background:var(--ok)}.msteps i.cur{background:var(--primary)}
+.ho-n{font-size:12.5px;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ho-n .ho-warn{font-size:11.5px}
+.ho-due{display:flex;flex-direction:column;align-items:flex-end;gap:1px;white-space:nowrap}
+a.act{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+@media (max-width:900px){.rows li.horow{grid-template-columns:minmax(0,1fr) auto}.ho-n{grid-column:1 / -1}.ho-due{align-items:flex-start;flex-direction:row;gap:6px}}
+/* 日程を変える: small form inside the task row */
+.rows li.rs-row{display:block;border-top:0;padding:0 0 8px}
+.rs-form{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;padding:10px 12px;border-radius:8px;background:var(--surface-2)}
+.rs-form .field input{min-width:0}
+.rs-form .chk{align-self:center}
+.rs-form .group{display:flex;gap:6px;flex-wrap:wrap}
+.rs-form .err{flex-basis:100%}
+/* ＋ やることを追加 / メモからやることにする (one form) */
+.td-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px 12px;padding:12px;border-radius:8px;background:var(--surface-2);margin:0 0 10px}
+.td-form h3{grid-column:1 / -1;font-size:13px;margin:0}
+.td-form .wide{grid-column:1 / -1}
+.td-form .field input,.td-form .field select{min-width:0;width:100%;min-height:36px}
+.td-form .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.td-form fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.td-form legend{font-size:12px;color:var(--muted);font-weight:500;padding:0;margin-bottom:2px}
+.td-form .radios{display:flex;gap:6px 14px;flex-wrap:wrap}
+.td-form .radios label{display:flex;gap:6px;align-items:center;font-size:13px}
+.td-form .group{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.td-form .err{grid-column:1 / -1}
+.td-room{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.td-hits{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:180px;overflow:auto}
+.td-hits button{width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px;font-size:13px}
+.td-hits button:hover,.td-hits button:focus{border-color:var(--primary)}
+.today-bar .tadd{margin-left:auto}
+.pill.me-only{background:var(--surface-2);color:var(--muted);border:1px dashed var(--line)}
+.noroom{color:var(--muted)}
+.note .note-todo{display:inline-block;margin-top:6px;font-size:12px}
+@media (max-width:640px){
+  .td-form{grid-template-columns:minmax(0,1fr);padding:10px}
+  .td-form .field input,.td-form .field select,.td-form .btn,.td-form .act,.td-hits button,.td-room .act,.today-bar .tadd,.note .note-todo{min-height:44px}
+  .td-form .radios label{min-height:44px}
+  .td-form .radios input{width:22px;height:22px}
+  .td-form .group .btn{flex:1 1 auto}
+  .today-bar .tadd{margin-left:0;width:100%}
+}
+/* search inside blocks */
+.tsearch{position:relative;margin-bottom:8px}
+.tsearch svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted);pointer-events:none}
+.tsearch input{width:100%;border:1px solid var(--input);border-radius:8px;padding:7px 10px 7px 32px;background:var(--surface)}
+mark{background:var(--warn-soft);color:inherit;border-radius:2px;padding:0 1px}
+/* long task lists */
+button.stat{border:2px solid transparent;text-align:left;cursor:pointer;display:block;font:inherit;color:inherit}
+button.stat:hover{border-color:var(--input)}
+button.stat.on{border-color:currentColor}
+button.stat.danger.on{border-color:var(--danger)}button.stat.warn.on{border-color:var(--warn)}button.stat.info.on{border-color:var(--info)}
+button.stat .k,button.stat .v{display:block}
+.filter-note{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-2px 0 6px}
+.rows li.trow{align-items:center;padding:6px 0}
+.rows li.trow .end{display:flex;gap:10px;align-items:center}
+.rows li.trow .due{min-width:6.5em;text-align:right}
+.scroll-list{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:0 10px}
+.more{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+@media (max-width:640px){.rows li.trow{flex-wrap:wrap}.rows li.trow .end{width:100%;justify-content:space-between}}
+
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(380px,100%);background:var(--surface);border-left:1px solid var(--line);z-index:41;display:flex;flex-direction:column;box-shadow:var(--shadow);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line)}
+.drawer-head h2{font-size:16px}
+/* room panel: opens beside the list on wide screens (list stays usable), overlay on narrow ones */
+.drawer.side-panel{width:420px;box-shadow:none}
+@media (min-width:1181px){body.panel-side .app{margin-right:420px}}
+@media (max-width:1180px){.drawer.side-panel{width:min(420px,100%);box-shadow:var(--shadow)}}
+.room-nav{display:flex;align-items:center;gap:6px;padding:8px 18px;border-bottom:1px solid var(--line);background:var(--surface-2);font-size:12.5px;color:var(--muted)}
+.room-nav .pos{flex:1;text-align:center}
+.room-nav .act[disabled]{opacity:.4;cursor:default}
+.rows li.is-open{background:var(--primary-soft);box-shadow:-6px 0 0 var(--primary-soft),6px 0 0 var(--primary-soft);border-radius:4px}
+.rows li.is-open .rowbtn .t1{color:var(--primary)}
+.done-next{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-radius:8px;background:var(--ok-soft,var(--primary-soft))}
+.drawer-body{overflow:auto;padding:12px 18px 24px;display:flex;flex-direction:column;gap:16px}
+.drawer h3{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.06em;margin-bottom:6px}
+.cat{display:flex;flex-direction:column;gap:8px}
+.cat-item{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+.cat-item div{flex:1;min-width:0}
+.cat-item b{font-size:13.5px;font-weight:500;display:block}
+.cat-item span{font-size:12px;color:var(--muted)}
+
+.pal{position:fixed;inset:0;z-index:50;display:flex;justify-content:center;align-items:flex-start;padding:12vh 16px 16px;background:var(--scrim)}
+.pal-box{width:min(560px,100%);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:70vh}
+.pal-box input{border:0;border-bottom:1px solid var(--line);padding:14px 16px;font-size:15px;background:transparent;outline:none}
+.pal-list{overflow:auto;padding:6px}
+.pal-group{font-size:11px;color:var(--muted);letter-spacing:.06em;padding:8px 10px 4px}
+.pal-item{display:flex;justify-content:space-between;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:8px 10px;border-radius:7px;font-size:13.5px}
+.pal-item span:last-child{color:var(--muted);font-size:12px;white-space:nowrap}
+.pal-item[aria-selected="true"]{background:var(--primary-soft)}
+.pal-foot{border-top:1px solid var(--line);padding:8px 14px;font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;z-index:60;max-width:calc(100% - 32px)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.foot{font-size:12px;color:var(--muted);margin:6px 0 0}
+
+@media (max-width:1180px){
+  .block[style*="--w:4"]{grid-column:span 6}
+  .block[style*="--w:8"]{grid-column:span 12}
+}
+@media (max-width:767px){
+  .main{padding-inline:16px}
+  .board{grid-template-columns:minmax(0,1fr);gap:10px}
+  .block,.block[style*="--w:4"],.block[style*="--w:8"]{grid-column:auto}
+  .block[data-h]{min-height:0}
+  .collapse{display:inline-grid;place-items:center}
+  .block.collapsed .block-body{display:none}
+  .block.collapsed .block-head{padding-bottom:12px}
+  .head h1{font-size:19px}
+  .head-actions kbd{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* UX round: today pill, help tip, badges, labels, touch targets */
+.pill.today{background:var(--primary);color:var(--primary-fg)}
+.stat.today{background:var(--primary-soft)}.stat.today .v{color:var(--primary)}
+button.stat.today.on{border-color:var(--primary)}
+.tip.one p{flex:1 1 200px}
+.tip.one .group{display:flex;gap:8px;flex-wrap:wrap}
+.help-list{margin:0;padding-left:1.2em;font-size:13px;display:flex;flex-direction:column;gap:6px}
+.nav .badge{float:right;min-width:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:18px;margin-top:2px}
+.req{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--danger)}
+.room-pick{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.room-pick select{flex:1 1 200px;min-width:0}
+.room-pick .cap{white-space:nowrap}
+.field textarea[aria-invalid="true"],.field select[aria-invalid="true"]{border-color:var(--danger)}
+.ren-pick{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;cursor:pointer;margin:-4px 0}
+.vac-end{display:flex;flex-direction:column;align-items:flex-end;font-size:12px}
+.vac-end b{font-size:12.5px;color:var(--fg);font-weight:500}
+.pal-box input:focus-visible{box-shadow:inset 0 -2px 0 var(--primary)}
+.foot.mobile-only{display:none}
+@media (max-width:900px){.foot.mobile-only{display:block}.editbar{top:calc(52px + env(safe-area-inset-top,0px))}}
+@media (max-width:900px) and (pointer:coarse){.editbar{top:calc(62px + env(safe-area-inset-top,0px))}}
+@container (max-width:460px){#blk-renewals .c-ten{display:none}}
+@media (pointer:coarse){
+  .topbar button{min-height:40px;padding-block:8px}
+  .act,.fchip,.seg button,.today-bar .seg button,.occ-months button,.occ-period button,.mini button,.msg-tabs .act{min-height:40px;padding-top:6px;padding-bottom:6px}
+  .act,.fchip{min-width:40px}
+  .chip{min-height:40px}
+  .occ-period button,.occ-months button{min-height:44px}
+  .chip .x{width:40px;height:40px;margin:-8px -4px -8px 0}
+  .note{padding-right:44px}
+  .note .del{width:40px;height:40px;top:0;right:0}
+  .collapse{min-width:40px;min-height:40px}
+  .icon-btn,.handle{min-width:40px;height:40px}
+  .btn{min-height:40px}
+  .ren-pick{min-width:40px;min-height:40px}
+  .day{min-height:56px}
+  .link{min-height:40px;display:inline-flex;align-items:center}
+}
+/* ---- 入出金の確認 block (added 2026-10-19; links to money.html) ---- */
+.money-stats{margin-bottom:6px}
+.money-stats a.stat{display:block;text-decoration:none;color:inherit;border:2px solid transparent;min-height:44px}
+.money-stats a.stat:hover{border-color:var(--line)}
+.money-stats a.stat .k,.money-stats a.stat .v{display:block}
+.money-stats a.stat .s2{display:block;font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar"></div>
+<div class="app">
+  <aside class="side" id="side"></aside>
+
+  <main class="main" id="main">
+    <section class="proto" aria-label="役割の切り替え" hidden>
+      <span class="proto-tag">表示の切り替え</span>
+      <div class="seg" id="roles" role="group" aria-label="役割の切り替え"></div>
+      <p class="proto-note" id="protoNote">役割を切り替えると、その役割の最初の配置に変わります。</p>
+    </section>
+
+    <div id="editbar"></div>
+    <header class="head" id="head"></header>
+    <div id="tip"></div>
+    <section class="quick" id="quick" aria-label="よく使う操作"></section>
+    <section class="board" id="board" aria-label="ホームのブロック"></section>
+  </main>
+</div>
+<div id="drawer"></div>
+<div id="panel"></div>
+<div id="palette"></div>
+<div id="toast"></div>
+<div class="sr" aria-live="polite" id="live"></div>
+
+<script src="ganki-local-data.js"></script>
+<script src="ganki-data.js"></script>
+<script src="ganki-money.js"></script>
+<script src="ganki-jonojo.js"></script>
+<script>
+(function(){
+'use strict';
+/* 機能の設定 (2026-10-19): the home itself may be OFF for the current person */
+if(typeof GK.pageGate==='function'){GK.shell('index.html');if(GK.pageGate('page.home'))return}
+var $=function(s,r){return (r||document).querySelector(s)};
+/* every date on this page is counted from the shared demo "today" (GK.TODAY) */
+var T=GK.TODAY,ME=GK.ME;
+function rel(n){return GK.addDays(T,n)}
+function jd(s){var d=GK.parse(s);return d?(d.getMonth()+1)+'月'+d.getDate()+'日（'+GK.wd(s)+'）':''}
+var ICON={
+  grip:'<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="3.5" r="1.4"/><circle cx="11" cy="3.5" r="1.4"/><circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/><circle cx="5" cy="12.5" r="1.4"/><circle cx="11" cy="12.5" r="1.4"/></svg>',
+  eyeOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3.3 4.2M6.5 6.6C3.9 8.4 2.5 12 2.5 12s3.5 7 9.5 7a9.6 9.6 0 0 0 4.5-1.1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+  x:'<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="4" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
+};
+
+/* ---------- sample content (all fictional) ---------- */
+/* month-end occupancy: pick a month to see its figures; the chart keeps its shape (no stretching) */
+/* 2026-10-19: every month from the earliest management start (GK.firstManagedMonth) to this month, from the ledger (GK.occAt:
+   rooms of the properties managed at the month end, rooms with a lease running on the last day) — no demo history any more.
+   OCC.list rows: [label 'M月' or 'YYYY年M月', rate, occupied, managed, what changed in the managed count, 'YYYY-MM']
+   OCC.sel = the picked month ('YYYY-MM'); OCC.per = 期間 (6 / 12 / 24 / 0 = すべて), remembered per viewer in localStorage.
+   Rebuilt by buildOcc() from buildData(), so it follows a save in another tab or a Back-button return (the picked month stays) */
+var OCC_KEY='ganki-home-occ-period',OCC_PER=[[6,'半年'],[12,'1年'],[24,'2年'],[0,'すべて']];
+var OCC={list:[],sel:'',per:6};
+try{var op0=localStorage.getItem(OCC_KEY);if(op0!=null&&OCC_PER.some(function(p){return String(p[0])===op0}))OCC.per=+op0}catch(e){}
+function occLabel(m){return (m.slice(0,4)!==GK.TODAY.slice(0,4)?(+m.slice(0,4))+'年':'')+(+m.slice(5,7))+'月'}
+function buildOcc(){
+ var c=GK.TODAY.slice(0,7),ms=GK.monthRange(GK.firstManagedMonth(),c);if(!ms.length)ms=[c];
+ OCC.list=ms.map(function(m){
+  var o=GK.occAt(m),note=o.added.map(function(a){return a.name+'（'+a.rooms+'室）の管理開始'}).concat(o.removed.map(function(a){return a.name+'（'+a.rooms+'室）の管理終了'})).join('、');
+  return [occLabel(m),o.rate,o.occupied,o.rooms,note,m];
+ });
+ if(!OCC.list.some(function(x){return x[5]===OCC.sel}))OCC.sel=c;
+}
+/* the months shown for the chosen 期間 (the picked month moves into it when it falls outside) */
+function occView(){var L=OCC.list,n=OCC.per>0?Math.min(OCC.per,L.length):L.length,V=L.slice(L.length-n);if(!V.some(function(x){return x[5]===OCC.sel}))OCC.sel=V[V.length-1][5];return V}
+/* x labels: every month when there is room; otherwise every 2/3/6/12 months, then year boundaries only (「2025年1月」), never overlapping */
+function occTicks(V,X,w){
+ var tw=function(s){var n=0;for(var i=0;i<s.length;i++)n+=/[0-9]/.test(s[i])?6.4:11.5;return n};
+ var txt=function(x,full){var m=x[5],mo=+m.slice(5,7);return full?GK.monthText(m):mo===1?(+m.slice(0,4))+'年1月':mo+'月'};
+ /* a label at the edge is moved inward so it is never cut off */
+ var at=function(k,ww){return Math.max(ww/2+1,Math.min(w-ww/2-1,X(k)))};
+ var fits=function(list){var pl=[];for(var i=0;i<list.length;i++){var k=list[i],s=txt(V[k]),ww=tw(s),x=at(k,ww);for(var j=0;j<pl.length;j++)if(Math.abs(pl[j].x-x)<(pl[j].w+ww)/2+4)return null;pl.push({k:k,x:x,w:ww,s:s})}return pl};
+ var steps=[1,2,3,6,12];
+ for(var si=0;si<steps.length;si++){var st=steps[si],ks=[];V.forEach(function(x,k){var mo=+x[5].slice(5,7);if(st===1||(mo-1)%st===0)ks.push(k)});if(!ks.length)continue;var r=fits(ks);if(r)return r}
+ /* long ranges: year boundaries from the newest back, skipping those that would overlap */
+ var out=[];for(var k=V.length-1;k>=0;k--){if(+V[k][5].slice(5,7)!==1)continue;var s=txt(V[k]),ww=tw(s),x=at(k,ww);if(out.some(function(p){return Math.abs(p.x-x)<(p.w+ww)/2+4}))continue;out.push({k:k,x:x,w:ww,s:s})}
+ if(!out.length){var k0=V.length-1,s0=txt(V[k0],true);out.push({k:k0,x:at(k0,tw(s0)),w:tw(s0),s:s0})}
+ return out;
+}
+/* the vertical axis follows the data: rounded min/max with a little room above and below, 2-4 gridlines every 0.5/1/2/5/10… points
+   (the points then always sit inside the plot, clear of the month labels underneath) */
+function occAxis(vals){
+  vals=vals.filter(function(v){return isFinite(v)});if(!vals.length)vals=[0];
+  var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals),pad=Math.max(0.5,(hi-lo)*0.15),a=lo-pad,b=hi+pad;
+  var steps=[0.5,1,2,5,10,20,25,50],step=steps[steps.length-1];
+  for(var i=0;i<steps.length;i++){if(Math.ceil(b/steps[i]-1e-9)-Math.floor(a/steps[i]+1e-9)<=4){step=steps[i];break}}
+  var min=Math.floor(a/step+1e-9)*step,max=Math.ceil(b/step-1e-9)*step;
+  if(max>100&&hi<=100)max=100;if(min<0)min=0;if(max<=min)max=min+step;
+  var ticks=[];for(var t=min;t<=max+1e-9;t+=step)ticks.push(Math.round(t*10)/10);
+  return {min:min,max:max,step:step,ticks:ticks};
+}
+function occBlock(){
+  var e=GK.esc,V=occView(),L=OCC.list,gi=-1;L.forEach(function(x,k){if(x[5]===OCC.sel)gi=k});
+  var i=-1;V.forEach(function(x,k){if(x[5]===OCC.sel)i=k});if(i<0){i=V.length-1;gi=L.length-1}
+  var cur=V[i],v=+cur[1]||0,o=cur[2],rooms=cur[3],prev=gi>0?L[gi-1]:null;
+  var diff=prev==null||!prev[3]?'':(v-prev[1]>=0?'+':'−')+Math.abs(v-prev[1]).toFixed(1)+'ポイント（前月比）';
+  var grow=prev&&rooms!==prev[3]?'管理 '+(rooms-prev[3]>0?'+':'−')+Math.abs(rooms-prev[3])+'室'+(cur[4]?'：'+cur[4]:''):'管理の部屋数は前月と同じ';
+  var w=320,h=110,pl=34,pr=12,pt=12,pb=26,n=V.length,many=n>24;
+  var ax=occAxis(V.map(function(x){return x[1]})),min=ax.min,max=ax.max;
+  var X=function(k){return n>1?pl+k*(w-pl-pr)/(n-1):(pl+w-pr)/2},Y=function(val){return pt+(max-val)/(max-min)*(h-pt-pb)};
+  var f1=function(x){return (Math.round(x*10)/10).toFixed(1)};
+  var grid=ax.ticks.map(function(g){var y=f1(Y(g));return '<line x1="'+pl+'" x2="'+(w-pr)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/><text x="'+(pl-6)+'" y="'+(+y+4)+'" text-anchor="end" font-size="10" fill="var(--muted)">'+(ax.step<1?g.toFixed(1):g)+'%</text>'}).join('');
+  var line=V.map(function(x,k){return f1(X(k))+','+f1(Y(x[1]))}).join(' ');
+  var ticks=occTicks(V,X,w),tk={};ticks.forEach(function(t){tk[t.k]=t});
+  var full=function(x){return GK.monthText(x[5])};
+  var hitW=n>1?(w-pl-pr)/(n-1):40;
+  var dots=V.map(function(x,k){var on=k===i,cx=f1(X(k)),cy=f1(Y(x[1])),t=tk[k];
+    var g='<g><title>'+e(full(x))+'末 '+x[1]+'%（入居 '+x[2]+' / 管理 '+x[3]+'室）</title>'+(on?'<line x1="'+cx+'" x2="'+cx+'" y1="'+pt+'" y2="'+(h-pb)+'" stroke="var(--primary)" stroke-opacity=".25" stroke-width="1"/>':'');
+    if(!many||on)g+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(on?6:4)+'" fill="var(--primary)" stroke="var(--surface)" stroke-width="2"/>';
+    g+=many?'<rect x="'+f1(Math.max(0,X(k)-hitW/2))+'" y="'+pt+'" width="'+f1(Math.max(1,hitW))+'" height="'+(h-pt-pb)+'" fill="transparent" data-occm="'+x[5]+'" style="cursor:pointer"/>':'<circle cx="'+cx+'" cy="'+cy+'" r="12" fill="transparent" data-occm="'+x[5]+'" style="cursor:pointer"/>';
+    if(t)g+='<text x="'+f1(t.x)+'" y="'+(h-8)+'" text-anchor="middle" font-size="11" fill="'+(on?'var(--fg)':'var(--muted)')+'" font-weight="'+(on?700:400)+'">'+e(t.s)+'</text>';
+    return g+'</g>'}).join('');
+  var aria;
+  if(!many)aria='月末の入居率 '+V.map(function(x){return full(x)+' '+x[1]+'%'}).join('、');
+  else{var lo=V[0],hi=V[0];V.forEach(function(x){if(x[1]<lo[1])lo=x;if(x[1]>hi[1])hi=x});
+    aria='月末の入居率 '+full(V[0])+'〜'+full(V[n-1])+'（'+n+'か月）。最低 '+full(lo)+' '+lo[1]+'%、最高 '+full(hi)+' '+hi[1]+'%、'+full(cur)+'（選んだ月） '+cur[1]+'%'}
+  var per='<div class="seg occ-period" role="group" aria-label="グラフの期間">'+OCC_PER.map(function(p){var on=OCC.per===p[0];return '<button type="button" data-occp="'+p[0]+'" aria-pressed="'+on+'">'+p[1]+'</button>'}).join('')+'</div>';
+  var pick=n<=6?'<div class="seg occ-months" role="group" aria-label="月を選ぶ">'+V.map(function(x,k){return '<button type="button" data-occm="'+x[5]+'" aria-pressed="'+(k===i)+'" aria-label="'+e(full(x))+'" title="'+e(full(x))+'">'+(+x[5].slice(5,7))+'月</button>'}).join('')+'</div>'
+    :GK.monthPicker.html({id:'occMonth',months:V.map(function(x){return x[5]}),value:cur[5],group:'月を選ぶ',cls:'occ-pick'});
+  return '<div class="occ-head"><div class="big">'+v.toFixed(1)+'%<small>入居 '+o+' / 管理 '+rooms+'室</small></div><div class="occ-sub">'+e(full(cur))+'末の入居率'+(diff?'<br>'+diff:'')+'</div></div>'+
+    '<p class="occ-grow">'+e(prev?grow:'管理 '+rooms+'室（台帳でいちばん古い月）')+'</p>'+
+    '<svg class="occ-chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="'+e(aria)+'">'+grid+'<polyline points="'+line+'" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round"/>'+dots+'</svg>'+
+    '<div class="occ-ctl">'+per+pick+'<p class="occ-note">台帳から計算（'+e(GK.monthText(L[0][5]))+'〜・月末に契約中の部屋 ÷ 管理している部屋）</p></div>';
+}
+function occRedraw(focusSel){
+  var b=document.getElementById('blk-occupancy');
+  if(b){var body=b.querySelector('.block-body')||(b.children&&b.children[1]);if(body)body.innerHTML=occBlock()}else renderBoard();
+  var f=focusSel&&document.querySelector(focusSel);if(f&&f.focus)f.focus();
+}
+/* the handover block sits beside 「これからの契約更新」: keep both the same height and let the handover list scroll inside */
+function fitHandover(){
+  var h=document.getElementById('blk-handover'),list=h&&h.querySelector('#ho-list');if(!list)return;
+  list.style.maxHeight='';list.style.overflow='';
+  if(S.editing||isPhone())return;
+  var top=Math.round(h.getBoundingClientRect().top),other=[].filter.call(document.querySelectorAll('#board .block'),function(b){return b!==h&&Math.abs(Math.round(b.getBoundingClientRect().top)-top)<2});
+  if(!other.length)return;
+  var target=Math.max.apply(null,other.map(function(b){return b.getBoundingClientRect().height})),hh=h.getBoundingClientRect().height;
+  if(hh<=target+1)return;
+  var room=list.getBoundingClientRect().height-(hh-target);
+  list.style.maxHeight=Math.max(160,Math.floor(room))+'px';list.style.overflow='auto';
+}
+function fitSoon(){setTimeout(fitHandover,30)}
+document.addEventListener('click',fitSoon);document.addEventListener('input',fitSoon);document.addEventListener('change',fitSoon);
+document.addEventListener('keyup',fitSoon);window.addEventListener('resize',fitSoon);window.addEventListener('load',fitSoon);setTimeout(fitSoon,0);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitSoon);
+document.addEventListener('click',function(e){
+  if(S.editing)return;
+  var p=e.target.closest&&e.target.closest('[data-occp]');
+  if(p){var praw=p.getAttribute('data-occp'),pv=+praw;if(praw==null||praw===''||!OCC_PER.some(function(x){return x[0]===pv}))return;OCC.per=pv;try{localStorage.setItem(OCC_KEY,String(pv))}catch(err){}
+    occRedraw('.occ-period [data-occp="'+pv+'"]');return}
+  var t=e.target.closest&&e.target.closest('[data-occm]');if(!t)return;
+  var m=t.getAttribute('data-occm');if(!OCC.list.some(function(x){return x[5]===m}))return;
+  OCC.sel=m;occRedraw('.occ-months [data-occm="'+m+'"],#occMonth');
+});
+/* the month picker of longer periods (GK.monthPicker: its ‹ › 今月 buttons fire change on #occMonth) */
+document.addEventListener('change',function(e){
+  var t=e.target;if(!t||t.id!=='occMonth'||S.editing)return;
+  if(!OCC.list.some(function(x){return x[5]===t.value}))return;
+  OCC.sel=t.value;occRedraw('#occMonth');
+});
+function spark(vals,min,max){
+  var w=300,h=64,p=6,n=vals.length;
+  var pts=vals.map(function(v,i){return [p+i*(w-2*p)/(n-1), h-p-(v-min)/(max-min)*(h-2*p)]});
+  var line=pts.map(function(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}).join(' ');
+  var area='M'+pts[0][0].toFixed(1)+','+(h-p)+' L'+line.split(' ').join(' L')+' L'+pts[n-1][0].toFixed(1)+','+(h-p)+' Z';
+  var last=pts[n-1];
+  var grid=[0.25,0.5,0.75].map(function(f){var y=(p+f*(h-2*p)).toFixed(1);return '<line x1="'+p+'" x2="'+(w-p)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>'}).join('');
+  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" aria-hidden="true">'+grid+'<path d="'+area+'" fill="var(--primary-soft)"/><polyline points="'+line+'" fill="none" stroke="var(--primary)" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="3.5" fill="var(--primary)"/></svg>';
+}
+function when(t){return '<span class="when">'+t+'</span>'}
+var BLOCKS={
+  today:{t:'今日確認すること',d:'期限超過・退去予定・7日以内の対応',important:true,roles:['rental','admin'],w:8,h:'m',meta:'10件',
+    r:function(){return '<div class="stats"><div class="stat danger"><div class="k">期限超過</div><div class="v">3<small>件</small></div></div><div class="stat warn"><div class="k">退去予定</div><div class="v">2<small>件</small></div></div><div class="stat info"><div class="k">7日以内</div><div class="v">5<small>件</small></div></div></div>'+
+    '<ul class="rows">'+
+    '<li><span class="pill danger">期限超過</span><span class="main-t">更新書類の回収<div class="sub">ガンキハイツ南 203 · 田中 様</div></span><span class="end">10/10 期限</span></li>'+
+    '<li><span class="pill danger">期限超過</span><span class="main-t">鍵の返却確認<div class="sub">メゾン東町 105</div></span><span class="end">10/12 期限</span></li>'+
+    '<li><span class="pill warn">退去</span><span class="main-t">退去立会い<div class="sub">コーポ桜台 301 · 10:30〜</div></span><span class="end">10/18</span></li>'+
+    '<li><span class="pill info">7日以内</span><span class="main-t">更新の案内を送る<div class="sub">ガンキレジデンス 502</div></span><span class="end">10/20</span></li></ul>'}},
+  search:{t:'管理台帳を探す',d:'管理番号・物件・オーナー・入居者・住所で検索',roles:['rental'],w:4,h:'m',
+    r:function(){return '<div class="search"><input type="search" id="mock-search" placeholder="管理番号・物件名・入居者・住所" aria-label="管理台帳を検索"></div>'+
+    '<div class="filters"><span class="pill mute">物件</span><span class="pill mute">オーナー</span><span class="pill mute">入居者</span><span class="pill mute">住所</span></div>'+
+    '<div class="cap">最近開いた台帳</div><ul class="rows">'+
+    '<li><span class="main-t"><span class="code">GK-0123</span>ガンキハイツ南</span><span class="end">12室</span></li>'+
+    '<li><span class="main-t"><span class="code">GK-0457</span>メゾン東町</span><span class="end">8室</span></li>'+
+    '<li><span class="main-t"><span class="code">GK-0311</span>コーポ桜台</span><span class="end">6室</span></li></ul>'}},
+  history:{t:'対応履歴',d:'最近の連絡・対応の記録',roles:['rental'],w:6,h:'m',
+    r:function(){return '<ul class="rows">'+
+    '<li>'+when('今日 09:40')+'<span class="main-t">水漏れの連絡、業者手配済み<div class="sub">ガンキハイツ南 104 · 佐藤</div></span></li>'+
+    '<li>'+when('昨日 17:05')+'<span class="main-t">更新の意思確認、継続で回答<div class="sub">ガンキレジデンス 302 · 鈴木</div></span></li>'+
+    '<li>'+when('10/13')+'<span class="main-t">オーナーへ空室の募集条件を相談<div class="sub">メゾン東町 · 佐藤</div></span></li>'+
+    '<li>'+when('10/12')+'<span class="main-t">駐輪場の放置自転車を掲示で告知<div class="sub">コーポ桜台 · 高橋</div></span></li></ul>'}},
+  renewals:{t:'これからの契約更新',d:'満了が近い契約と案内の状況',roles:['rental'],w:6,h:'m',meta:'60日以内 6件',
+    r:function(){return '<div class="tbl-wrap"><table><thead><tr><th>物件・部屋</th><th>入居者</th><th>満了日</th><th>状況</th></tr></thead><tbody>'+
+    '<tr><td>ガンキレジデンス 502</td><td>小林 様</td><td>11/30</td><td><span class="pill warn">未案内</span></td></tr>'+
+    '<tr><td>ガンキハイツ南 203</td><td>田中 様</td><td>11/30</td><td><span class="pill info">案内済み</span></td></tr>'+
+    '<tr><td>メゾン東町 201</td><td>中村 様</td><td>12/15</td><td><span class="pill ok">更新合意</span></td></tr>'+
+    '<tr><td>コーポ桜台 102</td><td>加藤 様</td><td>12/31</td><td><span class="pill warn">未案内</span></td></tr></tbody></table></div>'}},
+  vacancy:{t:'空室',d:'空いている部屋と空室期間',roles:['rental'],w:4,h:'s',meta:'7室 / 186室',
+    r:function(){return '<ul class="rows">'+
+    '<li><span class="main-t">メゾン東町 105<div class="sub">1K · 募集中</div></span><span class="end">48日</span></li>'+
+    '<li><span class="main-t">コーポ桜台 301<div class="sub">2DK · 10/18 退去予定</div></span><span class="end">予定</span></li>'+
+    '<li><span class="main-t">ガンキハイツ南 402<div class="sub">1LDK · 申込あり</div></span><span class="end">12日</span></li></ul>'}},
+  occupancy:{t:'月末の入居率',d:'月末の入居率（台帳から・半年〜すべての期間）',roles:['rental','admin'],w:4,h:'s',
+    r:function(){return occBlock()}},
+  notes:{t:'メモ',d:'自分用の付箋',roles:['rental','accounting','purchasing','admin'],w:4,h:'s',
+    r:function(){return ''}}, /* replaced below by the working version */
+  arrears:{t:'未収・入金待ち',d:'期日を過ぎた請求と入金待ち',important:true,roles:['accounting','admin'],w:8,h:'m',meta:'8件',
+    r:function(){return '<div class="stats"><div class="stat danger"><div class="k">未収合計</div><div class="v">¥412,000</div></div><div class="stat warn"><div class="k">30日超</div><div class="v">2<small>件</small></div></div><div class="stat info"><div class="k">入金待ち（期日前）</div><div class="v">11<small>件</small></div></div></div>'+
+    '<div class="tbl-wrap"><table><thead><tr><th>物件・部屋</th><th>内容</th><th class="r">金額</th><th>経過</th></tr></thead><tbody>'+
+    '<tr><td>ガンキハイツ南 104</td><td>8月分 家賃</td><td class="r">¥72,000</td><td><span class="pill danger">76日</span></td></tr>'+
+    '<tr><td>メゾン東町 203</td><td>9月分 家賃</td><td class="r">¥68,000</td><td><span class="pill danger">45日</span></td></tr>'+
+    '<tr><td>コーポ桜台 201</td><td>10月分 家賃</td><td class="r">¥59,000</td><td><span class="pill warn">15日</span></td></tr>'+
+    '<tr><td>ガンキレジデンス 302</td><td>更新料</td><td class="r">¥85,000</td><td><span class="pill warn">9日</span></td></tr></tbody></table></div>'}},
+  csv:{t:'CSV照合',d:'楽天銀行とMF仕訳の照合で確認が必要な件数',roles:['accounting'],w:4,h:'m',meta:'10月分',
+    r:function(){return '<div class="stats"><div class="stat warn"><div class="k">要確認</div><div class="v">4<small>件</small></div></div><div class="stat info"><div class="k">候補あり</div><div class="v">12<small>件</small></div></div></div>'+
+    '<div class="meter" aria-hidden="true"><span style="width:84.3%;background:var(--ok)"></span><span style="width:11.8%;background:var(--info)"></span><span style="width:3.9%;background:var(--warn)"></span></div>'+
+    '<div class="legend"><span><i style="background:var(--ok)"></i>一致 86</span><span><i style="background:var(--info)"></i>候補あり 12</span><span><i style="background:var(--warn)"></i>要確認 4</span></div>'+
+    '<button class="link" type="button" data-mock="照合を続ける">照合を続ける →</button>'}},
+  billing:{t:'今月の請求と入金',d:'家賃・更新料・礼金などの請求と入金状況',roles:['accounting'],w:6,h:'m',
+    r:function(){return '<div class="big">96.1%<small>入金済み ¥17,920,000 / 請求 ¥18,640,000</small></div>'+
+    '<div class="meter" style="margin-top:8px" aria-hidden="true"><span style="width:96.1%;background:var(--primary)"></span></div>'+
+    '<div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>内訳</th><th class="r">請求</th><th class="r">入金済み</th></tr></thead><tbody>'+
+    '<tr><td>家賃・共益費</td><td class="r">¥17,860,000</td><td class="r">¥17,231,000</td></tr>'+
+    '<tr><td>更新料</td><td class="r">¥510,000</td><td class="r">¥425,000</td></tr>'+
+    '<tr><td>礼金・敷金</td><td class="r">¥270,000</td><td class="r">¥264,000</td></tr></tbody></table></div>'}},
+  remit:{t:'オーナー送金の予定',d:'今月の送金予定と準備状況',roles:['accounting'],w:6,h:'m',meta:'10/26 送金',
+    r:function(){return '<ul class="rows">'+
+    '<li><span class="main-t">山本 様<div class="sub">ガンキハイツ南 ほか2棟</div></span><span class="end"><span class="num">¥1,240,500</span><br><span class="pill ok">明細確定</span></span></li>'+
+    '<li><span class="main-t">森 様<div class="sub">メゾン東町</div></span><span class="end"><span class="num">¥486,200</span><br><span class="pill warn">未収あり</span></span></li>'+
+    '<li><span class="main-t">清水 様<div class="sub">コーポ桜台</div></span><span class="end"><span class="num">¥352,800</span><br><span class="pill mute">明細作成中</span></span></li></ul>'}},
+  revenue:{t:'管理部売上',d:'管理手数料・更新事務手数料など',roles:['accounting','admin'],w:12,h:'s',
+    r:function(){return '<div class="stats"><div class="stat"><div class="k">今月（'+GK.sd(T)+'時点）</div><div class="v">¥2,184,000</div></div><div class="stat"><div class="k">管理手数料</div><div class="v">¥1,742,000</div></div><div class="stat"><div class="k">更新事務手数料</div><div class="v">¥286,000</div></div><div class="stat"><div class="k">その他</div><div class="v">¥156,000</div></div><div class="stat ok"><div class="k">前月同日比</div><div class="v">+4.8%</div></div></div>'}},
+  deals:{t:'担当案件の進み具合',d:'仕入れ案件の段階ごとの件数',roles:['purchasing'],w:8,h:'m',meta:'16件',
+    r:function(){var s=[['情報収集',6],['現地確認',3],['収支検討',4],['融資打診',2],['契約準備',1]];
+    return s.map(function(x){return '<div class="bar-row"><span>'+x[0]+'</span><span class="bar"><span style="width:'+(x[1]/6*100).toFixed(0)+'%"></span></span><span class="n">'+x[1]+'</span></div>'}).join('')+
+    '<ul class="rows" style="margin-top:8px"><li><span class="pill warn">返答待ち</span><span class="main-t">西町1丁目 一棟アパート<div class="sub">融資打診 · 地銀A</div></span><span class="end">10/19</span></li><li><span class="pill info">現地</span><span class="main-t">北区 区分マンション 3戸<div class="sub">現地確認 · '+GK.sd(rel(1))+' 14:00</div></span><span class="end">明日</span></li></ul>'}},
+  schedule:{t:'今週の予定',d:'現地確認や面談の予定',roles:['purchasing'],w:4,h:'m',
+    r:function(){return '<ul class="rows">'+
+    '<li>'+when(GK.sdw(rel(1)))+'<span class="main-t">現地確認<div class="sub">北区 区分マンション</div></span></li>'+
+    '<li>'+when(GK.sdw(rel(3)))+'<span class="main-t">地銀Aと面談<div class="sub">西町1丁目の融資</div></span></li>'+
+    '<li>'+when(GK.sdw(rel(4)))+'<span class="main-t">仲介会社と打合せ<div class="sub">新規の物件情報</div></span></li></ul>'}},
+  candidates:{t:'物件の候補',d:'検討中の物件と利回り',roles:['purchasing'],w:6,h:'m',
+    r:function(){return '<div class="tbl-wrap"><table><thead><tr><th>物件</th><th class="r">価格</th><th class="r">表面利回り</th><th>状況</th></tr></thead><tbody>'+
+    '<tr><td>西町1丁目 一棟アパート</td><td class="r">4,800万円</td><td class="r">7.8%</td><td><span class="pill info">融資打診</span></td></tr>'+
+    '<tr><td>北区 区分マンション 3戸</td><td class="r">3,150万円</td><td class="r">6.9%</td><td><span class="pill mute">現地確認</span></td></tr>'+
+    '<tr><td>南台 テラスハウス</td><td class="r">2,600万円</td><td class="r">8.4%</td><td><span class="pill mute">収支検討</span></td></tr></tbody></table></div>'}},
+  loan:{t:'計算例・融資の確認',d:'借入条件から毎月の返済額を確認',roles:['purchasing'],w:6,h:'m',
+    r:function(){return '<div class="loan"><dl><dt>物件</dt><dd>西町1丁目 一棟アパート</dd><dt>借入額</dt><dd>4,300万円</dd><dt>金利・期間</dt><dd>年2.1% · 30年 · 元利均等</dd><dt>満室時の家賃収入</dt><dd>月 ¥312,000</dd></dl>'+
+    '<div class="result"><span>毎月の返済 <b>¥161,094</b></span><span>家賃に対する返済の割合 <b>51.6%</b></span></div></div>'}},
+  kpi:{t:'全体の数字',d:'未収・空室率・期限超過などの全体状況',important:true,roles:['admin'],w:12,h:'s',
+    r:function(){return '<div class="stats"><div class="stat danger"><div class="k">未収</div><div class="v">¥412,000<small>8件</small></div></div><div class="stat"><div class="k">空室率</div><div class="v">3.8%<small>7 / 186室</small></div></div><div class="stat danger"><div class="k">期限超過の対応</div><div class="v">3<small>件</small></div></div><div class="stat warn"><div class="k">CSV照合 要確認</div><div class="v">4<small>件</small></div></div><div class="stat"><div class="k">今月の管理部売上</div><div class="v">¥2,184,000</div></div></div>'}},
+  staff:{t:'担当ごとの未処理件数',d:'各担当が抱えている対応の件数',roles:['admin'],w:6,h:'m',
+    r:function(){var s=[['佐藤',5,''],['鈴木',3,''],['高橋',8,'warn'],['伊藤',1,'']];
+    return s.map(function(x){return '<div class="bar-row"><span>'+x[0]+'</span><span class="bar"><span class="'+x[2]+'" style="width:'+(x[1]/8*100).toFixed(0)+'%"></span></span><span class="n">'+x[1]+'</span></div>'}).join('')+'<p class="sample-note" style="margin-top:8px">高橋さんの未処理のうち3件は期限超過です。</p>'}},
+  audit:{t:'権限・操作ログ',d:'権限の変更や重要な操作の記録',roles:['admin'],w:6,h:'m',
+    r:function(){return '<ul class="rows">'+
+    '<li>'+when(GK.sd(rel(-1))+' 09:12')+'<span class="main-t">CSV照合の結果を保存<div class="sub">鈴木 · 経理</div></span></li>'+
+    '<li>'+when(GK.sd(rel(-2))+' 18:40')+'<span class="main-t">伊藤さんに賃貸管理の閲覧権限を追加<div class="sub">管理者</div></span></li>'+
+    '<li>'+when(GK.sd(rel(-2))+' 11:03')+'<span class="main-t">Excel原簿を書き出し<div class="sub">佐藤 · 賃貸管理</div></span></li>'+
+    '<li>'+when(GK.sd(rel(-3))+' 16:22')+'<span class="main-t">入居者情報を1件ごみ箱へ移動<div class="sub">高橋 · 賃貸管理</div></span></li></ul>'}}
+};
+/* ---------- rental-staff helpers ----------
+   Rooms, tenants, contracts, arrears, tasks, history and renewals come from the shared demo store (GK.db in ganki-data.js),
+   so what you do here also shows on the other pages. Only the handover block, memos and the move-out checklist stay on this page. */
+function esc(s){return GK.esc(s)}
+var ROOMS={},PAST={},NEXT={},PROPS={};
+function guaLabel(g){return g?'あり（'+g+'）':'なし'}
+function buildData(){
+  ROOMS={};PAST={};NEXT={};PROPS={};
+  GK.db.props.forEach(function(p){
+    var o=GK.owner(p.owner),s=GK.parse(p.since);
+    PROPS[p.n]={code:p.id,addr:p.addr,type:p.type,units:(p.rooms||[]).length,owner:o?o.n+' 様':'',ownerId:o?o.id:'',ownerName:o?o.n:'',ownerTel:o?o.tel:'',since:s?s.getFullYear()+'年'+(s.getMonth()+1)+'月':''};
+  });
+  GK.db.units.forEach(function(u){
+    var p=GK.prop(u.prop);if(!p)return;
+    var a=GK.activeLease(u.id),t=a&&GK.tenant(a.tenant),st=GK.unitStatus(u);
+    var ar=a?GK.arrears(a.id).map(function(c){return (+c.month.slice(5))+'月分 家賃 '+GK.yen(c.amount-(c.paid||0))+'（'+GK.overdueDays(c.due)+'日）'}).join('、'):'';
+    var term=a?(a.notice?GK.sd(a.notice.date)+' 退去予定（契約 '+(a.startUnknown?'始まり 確認中':GK.jp(a.start)+'〜')+'）':termText(a)+(a.renewal==='更新済み'?'（更新済み）':'')):'空室（'+st+'）';
+    ROOMS[u.id]={p:p.n,n:u.no,lay:u.lay||'',area:u.area||0,rent:+(a?a.rent:u.rent)||0,ten:t?t.n+' 様':'',tid:t?t.id:'',tel:t?t.tel:'',gua:a?guaLabel(a.gua):'—',term:term,ar:ar,lease:a?a.id:'',st:st};
+  });
+  GK.db.leases.forEach(function(l){
+    var t=GK.tenant(l.tenant);if(!t)return;
+    if(l.status==='終了'){var m=l.moveout||{};(PAST[l.unit]=PAST[l.unit]||[]).push({n:t.n+' 様',t:termText(l),why:m.reason||'退去',set:m.settle?'敷金：'+m.settle:'',end:l.end,lid:l.id})}
+    else if(l.status==='申込中'||l.status==='入居予定')NEXT[l.unit]={n:t.n+' 様',t:GK.sd(l.start)+' 入居予定',st:l.status==='申込中'?'申込あり・審査中':'入居予定',start:l.start};
+  });
+  Object.keys(PAST).forEach(function(k){PAST[k].sort(function(a,b){return a.end<b.end?1:-1})});
+  GK.db.leases.forEach(function(l){if(l.status==='有効'&&l.notice&&!NEXT[l.unit])NEXT[l.unit]={n:'',t:GK.sd(l.notice.date)+' 退去後に募集',st:'募集準備'}});
+  buildOcc();
+}
+/* contract term in words: a takeover lease may not know its start (startUnknown) or its end yet (endUnknown = provisional end) */
+function termText(l){
+  var s=l.startUnknown||!l.start?'始まり 確認中 ':GK.jp(l.start),e=l.end?GK.jp(l.end)+(l.endUnknown?'（仮）':''):'未登録';
+  return s+'〜'+e;
+}
+buildData();
+/* managed buildings only (takeovers in progress are not in 物件・台帳 yet; they are listed in the 管理の引継ぎ block) */
+function propNames(){return Object.keys(PROPS)}
+function rl(k){if(!k)return '部屋なし';var R=ROOMS[k];return R?R.p+' '+R.n:GK.roomLabel(k)}
+function code(k){return String(k).split('-').slice(0,2).join('-')}
+function nowHM(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
+/* 「元に戻す」 reverses only this page's own change, found again by id in the current GK.db
+   (GK.db may have been replaced by a save in another tab; whole arrays are never put back, so other tabs' changes survive) */
+function logIt(t,unit){
+  GK.log(t,unit);
+  var l=GK.db.log[0]||{},h=unit?GK.db.hist[0]:null;
+  return {at:l.at,t:l.t,unit:unit||'',hid:h&&h.t===t?h.id:''};
+}
+function unlog(recs){
+  var d=GK.db;
+  (recs||[]).forEach(function(r){
+    if(!r)return;
+    if(Array.isArray(d.log))for(var i=0;i<d.log.length;i++){var x=d.log[i];if(x&&x.at===r.at&&x.t===r.t&&(x.unit||'')===r.unit){d.log.splice(i,1);break}}
+    if(r.hid&&Array.isArray(d.hist))for(var j=0;j<d.hist.length;j++){var y=d.hist[j];if(y&&y.id===r.hid&&y.t===r.t&&y.unit===r.unit){d.hist.splice(j,1);break}}
+  });
+}
+/* the fields of a record as they were (absent fields stay absent when put back) */
+function keep(o,fields){var s={};fields.forEach(function(f){s[f]=Object.prototype.hasOwnProperty.call(o,f)?{v:JSON.parse(JSON.stringify(o[f]===undefined?null:o[f]))}:null});return s}
+function putBack(o,s){if(!o)return;Object.keys(s).forEach(function(f){if(s[f])o[f]=s[f].v;else delete o[f]})}
+function dropTasks(ids){if(ids.length)GK.db.tasks=GK.db.tasks.filter(function(x){return ids.indexOf(x.id)<0})}
+/* ---------- tasks (GK.db.tasks: {id,unit,t,due,who,done}) ---------- */
+function taskBy(id){return GK.by(GK.db.tasks,id)}
+function isOut(x){return x.kind==='out'||/退去/.test(x.t||'')}
+/* kind is worked out from the date every time, so 「明日へ」 or a new task never needs a manual label */
+/* 'later' = due after the next 7 days: not on 今日確認すること (it shows in 今週の予定 / the room panel when its day comes) */
+function kindOf(x){if(x.due&&x.due<T)return 'over';if(x.due===T)return 'today';if(x.due&&x.due>rel(7))return 'later';if(isOut(x))return 'out';return 'soon'}
+function taskTime(x){if(x.time)return x.time;if(isOut(x)){var a=GK.activeLease(x.unit);if(a&&a.notice&&a.notice.insp&&a.notice.insp.slice(0,10)===x.due)return a.notice.insp.slice(11,16)}return ''}
+function dueText(x){var tm=taskTime(x),k=kindOf(x);if(k==='over')return GK.sd(x.due)+' 期限';return (x.due===T?'今日':x.due===rel(1)?'明日 '+GK.sd(x.due):GK.sdw(x.due))+(tm?' '+tm:'')}
+function cmpDue(a,b){return a.due<b.due?-1:a.due>b.due?1:(taskTime(a)||'99')<(taskTime(b)||'99')?-1:1}
+/* appointments (a set time with someone: 退去立会い 10:30, 内見 …) are moved with 「日程を変える」, never 「明日へ」 */
+function isAppt(x){
+  if(typeof GK.fixedTime==='function'){try{return !!GK.fixedTime(x)}catch(e){}}
+  return /\d{1,2}:\d{2}/.test((x.t||'')+' '+dueText(x))||/^(退去立会い|内見|立会い)/.test(x.t||'');
+}
+function apptTime(x){var tm=taskTime(x);if(tm)return tm;var m=/(\d{1,2}):(\d{2})/.exec(x.t||'');return m?('0'+m[1]).slice(-2)+':'+m[2]:''}
+/* 「退去立会い（10/18 10:30）」 -> 「退去立会い」 */
+function apptBase(x){return String(x.t||'').replace(/\s*（[^）]*\d{1,2}[\/:]\d{1,2}[^）]*）\s*$/,'')||String(x.t||'')}
+function apptLabel(d,tm){return GK.sd(d)+(tm?' '+tm:'')}
+/* the lease whose 立会い date this task is (notice.insp moves with it) */
+function apptLease(x){var a=GK.activeLease(x.unit);return a&&a.notice&&a.notice.insp&&/立会い/.test(x.t||'')?a:null}
+function rsForm(x){
+  var tm=apptTime(x),d=x.due&&x.due>=T?x.due:T,l=apptLease(x);
+  return '<li class="rs-row"><form class="rs-form" id="rs-form" data-task="'+esc(x.id)+'" novalidate aria-label="「'+esc(x.t)+'」の日程を変える">'+
+    '<div class="field"><label for="rs-date">新しい日付</label><input type="date" id="rs-date" min="'+T+'"'+(l&&l.notice.date?' max="'+esc(l.notice.date)+'"':'')+' value="'+esc(d)+'" required aria-describedby="rs-err"></div>'+
+    '<div class="field"><label for="rs-time">時刻</label><input type="time" id="rs-time" value="'+esc(tm)+'" aria-describedby="rs-err"></div>'+
+    '<label class="chk"><input type="checkbox" id="rs-told" checked>入居者に連絡した</label>'+
+    '<span class="group"><button class="btn primary" type="submit">変更する</button><button class="btn" type="button" data-rscancel="'+esc(x.id)+'">やめる</button></span>'+
+    '<p class="err" id="rs-err" role="alert" hidden></p>'+
+    '<p class="cap" style="flex-basis:100%;margin:0">今の予定：'+esc(apptLabel(x.due,tm))+(l?' · 退去日 '+esc(GK.sd(l.notice.date))+'（立会いは退去日までに）':'')+' · Esc でやめる</p></form></li>';
+}
+/* only the to-dos this person may see: a private (自分だけ) to-do belongs to its creator alone, so every list and count below skips it for others */
+function visTasks(){return typeof GK.visibleTasks==='function'?GK.visibleTasks():GK.db.tasks.filter(function(x){return x&&!x.private})}
+function openTasks(){return visTasks().filter(function(x){return !x.done})}
+/* what 今日確認すること lists and counts (the greeting uses the same set, so the numbers agree) */
+/* 滞納の段階 (2026-10-19; GK.dun in ganki-data.js): one row per contract with unpaid rent — its current step, worked out from the
+   charges each time (never stored as a to-do, so it is never duplicated and always up to date). 済み moves it to the next step. */
+function dunOn(){return !!(GK.dun&&GK.can('money.dunning'))}
+function dunStates(){if(!dunOn())return [];try{return GK.dun.list()}catch(e){if(window.console)console.error(e);return []}}
+function dunRows(){return dunStates().filter(function(s){return s.step>0}).map(function(s){return {id:'dun-'+s.lease,dun:s,unit:s.unit,t:s.text,due:s.due,who:s.who}})}
+function todayTasks(){return openTasks().concat(dunRows()).filter(function(x){return kindOf(x)!=='later'})}
+function doneTasks(){return visTasks().filter(function(x){return x.done&&(!x.doneAt||x.doneAt===T)})}
+function cnt(k){return openTasks().concat(dunRows()).filter(function(x){return kindOf(x)===k}).length}
+function meOnly(x){return x&&x.private?'<span class="pill me-only">自分だけ</span>':''}
+/* a to-do without a room (unit '') is not a button: there is no room to open, and no room-only action is drawn for it */
+function roomBtn(k,title,who,x){
+  var sub=(k?esc(rl(k)):'<span class="noroom">部屋なし</span>')+meOnly(x)+(who?'<span class="who'+(who===ME?' me':'')+'">担当 '+(who===ME?'自分':esc(who))+'</span>':'');
+  if(!k)return '<span class="main-t"><span class="t1">'+esc(title)+'</span><div class="sub">'+sub+'</div></span>';
+  return '<button type="button" class="rowbtn" data-room="'+esc(k)+'"><span class="t1">'+esc(title)+'</span><div class="sub">'+sub+'</div></button>'}
+/* ---------- history (GK.db.hist) ---------- */
+/* 「発信」 pill on 電話（発信） entries (GK.callPill in ganki-data.js) */
+function callMark(t){return typeof GK.callPill==='function'?GK.callPill(t):''}
+function whenLabel(at){var d=String(at||'').slice(0,10),tm=String(at||'').slice(11,16);return d===T?'今日 '+tm:d===rel(-1)?'昨日 '+tm:GK.sd(d)}
+function allHist(){
+  return GK.db.hist.map(function(x){return {at:x.at,w:whenLabel(x.at),t:x.t,room:x.unit,who:x.who}})
+    .sort(function(a,b){return a.at<b.at?1:a.at>b.at?-1:0});
+}
+/* ---------- renewals: not yet sent (GK.renewalsDue) + those already in progress ---------- */
+function renList(){
+  var lim=GK.addDays(T,GK.db.prefs.notifyDays||90);
+  var due=GK.renewalsDue().map(function(l){return {room:l.unit,end:l.end,st:'未案内',lease:l.id}});
+  var other=GK.db.leases.filter(function(l){return l.status==='有効'&&!l.notice&&l.renewal&&l.renewal!=='更新済み'&&l.end<=lim}).map(function(l){return {room:l.unit,end:l.end,st:l.renewal,lease:l.id}});
+  return due.concat(other).sort(function(a,b){return a.end<b.end?-1:a.end>b.end?1:0});
+}
+function letterDue(end){var d=GK.addDays(T,21),lim=GK.addDays(end,-30);if(lim<d)d=lim;if(d<GK.addDays(T,7))d=GK.addDays(T,7);return d}
+function moLeases(){return GK.db.leases.filter(function(l){return l.status==='有効'&&l.notice}).sort(function(a,b){return a.notice.date<b.notice.date?-1:1})}
+var D={
+  mine:false,day:T,recent:[],msg:{},sel:{},
+  mo:null,resched:null,
+  q:'',shown:{},shownOwner:{}
+};
+/* memos live in the shared store (GK.db.memos: [{t,s}]); a store without the key gets the two sample memos (saved on the first change) */
+function memos(){
+  if(!Array.isArray(GK.db.memos))GK.db.memos=GK.LOCAL?[]:[{id:'m1',t:'山本オーナーへ折り返し（'+GK.sd(T)+' 午前）',s:'個人'},{id:'m2',t:'桜台の植栽、見積もり待ち',s:'共有'}];
+  /* each memo gets an id (older ones by position) so delete / undo find the same memo after another tab's save */
+  GK.db.memos.forEach(function(x,i){if(x&&typeof x==='object'&&!x.id)x.id='m'+(i+1)});
+  return GK.db.memos;
+}
+function newMemoId(){return 'm'+Date.now().toString(36)+Math.floor(Math.random()*1000)}
+/* move-out checklist: the room and dates come from the store (the lease with a move-out notice);
+   the ticks are kept per lease in GK.db.moChecks[leaseId] = [true,false,...] */
+var MO_DEFAULT=[1,1,0,0,0,0];
+function moChecks(){if(!GK.db.moChecks||typeof GK.db.moChecks!=='object'||Array.isArray(GK.db.moChecks))GK.db.moChecks={};return GK.db.moChecks}
+function buildMo(){
+  D.mo=null;
+  var l=moLeases()[0];if(!l)return;
+  var insp=l.notice.insp||'',saved=GK.db.moChecks&&Array.isArray(GK.db.moChecks[l.id])?GK.db.moChecks[l.id]:null;
+  var labels=['退去立会いの日程を確定','鍵の返却方法を案内','退去立会い（'+(insp?GK.sd(insp.slice(0,10))+(insp.slice(11,16)?' '+insp.slice(11,16):''):GK.sd(l.notice.date))+'）','原状回復の見積もりを依頼','敷金の精算書を作成','募集を開始（写真・条件の確認）'];
+  D.mo={room:l.unit,lease:l.id,items:labels.map(function(x,i){return [x,(saved?!!saved[i]:!!MO_DEFAULT[i])?1:0]})};
+}
+var WEEK=[0,1,2,3,4,5,6].map(function(i){var s=rel(i);return [s,GK.wd(s)]});
+/* vendors per building; the owner line is added from the store */
+var CONTACTS={
+  'ガンキハイツ南':[['水まわり','ミズテック設備','03-0000-1101'],['鍵','カギの森','03-0000-1102'],['消防設備','東和防災','03-0000-1103']],
+  'メゾン東町':[['水まわり','ミズテック設備','03-0000-1101'],['内装・網戸','ひがし内装','03-0000-2201']],
+  'コーポ桜台':[['水まわり','さくら水道','03-0000-3301'],['清掃・植栽','グリーン桜台','03-0000-3302']],
+  'ガンキレジデンス':[['エレベーター','中央昇降機','03-0000-5501'],['水まわり','ミズテック設備','03-0000-1101']]
+};
+/* vendors only: the owner's phone is shown masked in the owner section (番号を表示 logs the reveal, like 物件・台帳) */
+function contactsOf(name){return GK.LOCAL?[]:(CONTACTS[name]||[]).slice()} /* 社内検証用のデータ: the sample vendors are not shown */
+var GUA_TEL=GK.LOCAL?{}:{'ガンキ保証':'03-0000-7001','東日本保証':'03-0000-7002','全国家賃保証':'03-0000-7003'};
+/* phone + copy button, or 「電話 未登録」 (no copy button) */
+function telCell(tel,label,call){return tel?esc(tel)+' <button class="act" type="button" data-copytel="'+esc(tel)+'"'+(label?' aria-label="'+esc(label)+'の電話番号をコピー"':'')+'>コピー</button>'+(call?' '+call:''):'<span class="cap">電話 未登録</span>'}
+/* 「電話する」 (GK.callLink in ganki-data.js: the call is written to the history at once); '' with an older ganki-data.js */
+function callBtn(tel,o){return typeof GK.callLink==='function'?GK.callLink(tel,o):''}
+/* the room's tenant: masked on screen, so the number is looked up on press (ref) */
+function tenantCall(k,task){var R=ROOMS[k];return R&&R.tel?callBtn(R.tel,{name:R.ten,role:'入居者',unit:k,ref:R.tid?'tenant:'+R.tid:'',task:task||''}):''}
+/* vendors / guarantor (unit: the room panel the row is shown in, so the call goes into that room's history) */
+function contactRow(c,unit){return '<li><span class="main-t">'+esc(c[1])+'<div class="sub">'+esc(c[0])+'</div></span><span class="end">'+telCell(c[2],c[1],callBtn(c[2],{name:c[1],role:c[0]==='保証会社'?'保証会社':'業者',unit:unit||''}))+'</span></li>'}
+/* owner phone: masked until 「番号を表示」 (logged); copy only after the reveal; 「電話する」 works either way */
+function ownerTelHtml(o,unit){
+  if(!o||!o.tel)return '<span class="cap">未登録</span>';
+  var call=callBtn(o.tel,{name:o.n+' 様',role:'オーナー',unit:unit||'',ref:'owner:'+o.id});
+  if(!GK.can('pi.owner'))return '<span class="tel">'+esc(GK.mask(o.tel))+call+'</span>';
+  if(D.shownOwner[o.id])return '<span class="tel"><b>'+esc(o.tel)+'</b> <button class="act" type="button" data-copytel="'+esc(o.tel)+'" aria-label="'+esc(o.n)+' 様の電話番号をコピー">コピー</button>'+call+'<span class="cap">'+esc(D.shownOwner[o.id])+' に表示</span></span>';
+  return '<span class="tel">'+esc(GK.mask(o.tel))+' <button class="act" type="button" data-revealowner="'+esc(o.id)+'" aria-label="'+esc(o.n)+' 様の電話番号を表示">番号を表示</button>'+call+'</span>';
+}
+/* bank account: only the last 3 digits of the number are shown */
+function maskBank(b){return String(b||'').replace(/\d(?=\d{3})/g,'*')}
+function msgTypes(k){var R=ROOMS[k],t=[];if(!R||!R.ten)return t;if(R.ar)t.push('督促');if(renList().some(function(r){return r.room===k}))t.push('更新の案内');t.push('点検のお知らせ');t.push('修理日程の連絡');return t}
+function msgText(k,type){
+  var R=ROOMS[k],to=R.p+' '+R.n+'号室\n'+R.ten+'\n\n',head='いつもお世話になっております。GANKI 賃貸管理部の'+ME+'です。\n',tail='\n\nご不明な点は、賃貸管理部（03-0000-0001）までご連絡ください。';
+  if(type==='督促')return to+head+R.ar.replace(/（[^）]*）/g,'')+'のお支払いが、本日時点で確認できておりません。\nお手数ですが、'+jd(rel(6))+'までにお振込みをお願いいたします。\n行き違いでお支払い済みの場合は、ご容赦ください。'+tail;
+  if(type==='更新の案内'){var r=renList().filter(function(x){return x.room===k})[0],l=GK.lease(r.lease);return to+head+'現在の賃貸借契約は '+GK.jp(r.end)+' に満了します。\n更新のご意向を、同封の書類で'+jd(l&&l.letter?l.letter.due:letterDue(r.end))+'までにお知らせください。'+tail}
+  if(type==='点検のお知らせ')return to+head+'建物の消防設備点検を行います。\n日時：'+jd(rel(7))+'13:00〜16:00\nお部屋に入っての点検があります。ご不在の場合は、別の日程をご相談ください。'+tail;
+  return to+head+'修理の日程についてご連絡いたします。\n候補日：'+jd(rel(4))+'午前／'+jd(rel(5))+'午後\nご都合のよい日時をお知らせください。'+tail;
+}
+function searchHits(q){
+  q=GK.norm(q);
+  return Object.keys(ROOMS).filter(function(k){var R=ROOMS[k];return !q||GK.norm(k+' '+R.p+R.n+' '+R.p+' '+R.n+' '+R.ten).indexOf(q)>=0});
+}
+function searchList(){
+  var ks=D.q.trim()?searchHits(D.q).slice(0,6):(D.recent.length?D.recent.slice(0,3):['GK-0123-203','GK-0457-201','GK-0311-301']).filter(function(k){return ROOMS[k]});
+  var pq=GK.norm(D.q),ps=pq?propNames().filter(function(n){return GK.norm(n+' '+(PROPS[n]?PROPS[n].code:'')).indexOf(pq)>=0}).slice(0,3):[];
+  var ph=ps.length?'<div class="cap">物件</div><ul class="rows">'+ps.map(function(n){return '<li><button type="button" class="rowbtn" data-prop="'+esc(n)+'"><span class="t1">'+esc(n)+'</span><div class="sub">'+(PROPS[n]?esc(PROPS[n].code)+' · '+PROPS[n].units+'室':'')+'</div></button><span class="end">詳細 →</span></li>'}).join('')+'</ul>':'';
+  if(!ks.length)return ph|| '<p class="sample-note">見つかりませんでした。物件名・部屋番号・入居者名で探せます。</p>';
+  return ph+'<div class="cap">'+(D.q.trim()?'部屋 '+ks.length+'件':'最近開いた部屋')+'</div><ul class="rows">'+ks.map(function(k){var R=ROOMS[k];return '<li><button type="button" class="rowbtn" data-room="'+esc(k)+'"><span class="code">'+esc(code(k))+'</span><span class="t1">'+esc(R.p+' '+R.n)+'</span><div class="sub">'+esc(R.ten||R.term)+'</div></button>'+(R.ar?'<span class="pill danger">未収</span>':'')+'</li>'}).join('')+'</ul>';
+}
+var TP={over:['danger','期限超過'],today:['today','今日'],out:['warn','退去予定'],soon:['info','7日以内'],later:['mute','8日以降'],dun:['danger','滞納']};
+var KORD={over:0,today:1,out:2,soon:3,later:4};
+BLOCKS.today={t:'今日確認すること',d:'期限超過・今日・退去予定・7日以内の対応。その場で完了・延期・記録できます',important:true,roles:['rental','admin'],w:8,h:'m',
+  meta:function(){return '残り '+todayTasks().length+'件'},
+  r:function(){
+    var P=TP;
+    var base=todayTasks().filter(function(x){return !D.mine||x.who===ME});
+    var c={over:0,today:0,out:0,soon:0};base.forEach(function(x){var k=kindOf(x);if(k in c)c[k]++});
+    var mineN=todayTasks().filter(function(x){return x.who===ME}).length;
+    var h='<div class="today-bar"><span class="seg" role="group" aria-label="表示する担当"><button type="button" data-mine="0" aria-pressed="'+!D.mine+'">全員（'+todayTasks().length+'）</button><button type="button" data-mine="1" aria-pressed="'+D.mine+'">自分の担当だけ（'+mineN+'）</button></span><span class="cap">件数を押すと絞り込み'+(GK.can('act.record')?' · <kbd>N</kbd> で記録':'')+'</span>'+(GK.can('act.addtask')?'<button class="btn tadd" type="button" data-tdopen="1" aria-expanded="'+!!(D.td&&D.td.from==='today')+'" aria-controls="td-form">＋ やることを追加</button>':'')+'</div>';
+    if(D.td&&D.td.from==='today'&&GK.can('act.addtask'))h+=tdForm();
+    h+='<div class="stats" role="group" aria-label="種類で絞り込む">'+['over','today','out','soon'].map(function(k){return '<button type="button" class="stat '+P[k][0]+(D.kf===k?' on':'')+'" data-kf="'+k+'" aria-pressed="'+(D.kf===k)+'"><span class="k">'+P[k][1]+'</span><span class="v">'+c[k]+'<small>件</small></span></button>'}).join('')+
+      /* 滞納: every contract with unpaid rent (also those waiting for the 保証会社's payment) */
+      (dunOn()?'<button type="button" class="stat dun'+(D.kf==='dun'?' on':'')+'" data-kf="dun" aria-pressed="'+(D.kf==='dun')+'" aria-label="滞納 '+dunStates().length+'件（滞納だけを表示）"><span class="k">滞納</span><span class="v">'+dunStates().length+'<small>件</small></span></button>':'')+'</div>';
+    h+='<div class="tsearch">'+ICON.search+'<input type="search" id="today-q" value="'+esc(D.tq||'')+'" placeholder="対応・部屋・担当で探す" aria-label="今日確認することを検索（対応・部屋・入居者・担当・日付）" autocomplete="off"></div>';
+    return h+'<div id="today-list">'+todayList()+'</div>';
+  }};
+function hl(s,q){return GK.hl(s,q)}
+function taskMatch(x,ql){
+  var R=ROOMS[x.unit]||{};
+  return GK.hit(ql,[x.t,rl(x.unit),R.ten||'',x.who,dueText(x),GK.sd(x.due),TP[kindOf(x)][1],code(x.unit)]);
+}
+function todayItems(){
+  var ql=(D.tq||'').trim();
+  return todayTasks().filter(function(x){return !D.mine||x.who===ME}).filter(function(x){
+    if(D.kf==='dun'){if(!x.dun)return false}
+    else if(D.kf&&kindOf(x)!==D.kf)return false;
+    return taskMatch(x,ql);
+  }).sort(function(a,b){return (KORD[kindOf(a)]-KORD[kindOf(b)])||cmpDue(a,b)});
+}
+/* a to-do that is a phone call to the room's tenant (家賃の督促連絡, 〜へ連絡, 電話 …): the row gets 「電話する」 */
+function isCallTask(x){var R=ROOMS[x.unit];return !!(R&&R.tel&&/電話|督促|連絡/.test(String(x.t||'')))}
+/* a 滞納 row: 電話する (the tenant — of this contract, even after a move-out — or, for the claim, the 保証会社's number from the settings),
+   AIで下書き (the reminder for this step), 済み (next step), 記録. The call sheet can mark the step 済み too (task 'dun:<lease>'). */
+function dunRow(x,q){
+  var s=x.dun,lid=s.lease,n=s.step,k=kindOf(x),P=TP,g=s.guaSet||{};
+  /* who the step calls: 3 the 保証会社 (settings), 4 the 連帯保証人, 5 the owner, 1・2 the tenant; 6 is a letter (no call) */
+  var call=n===3?(g.tel?callBtn(g.tel,{name:s.gua+(g.who?' '+g.who:''),role:'保証会社',unit:x.unit,task:'dun:'+lid}):'')
+    :n===4?(s.jg&&s.jg.tel?callBtn(s.jg.tel,{name:s.jg.n+' 様',role:'連帯保証人',unit:x.unit,ref:'gu:'+s.tenant,task:'dun:'+lid}):'')
+    :n===5?(s.owner&&s.owner.tel?callBtn(s.owner.tel,{name:s.owner.n+' 様',role:'オーナー',unit:x.unit,ref:'owner:'+s.owner.id,task:'dun:'+lid}):'')
+    :n===6?'':(s.tel?callBtn(s.tel,{name:s.name+' 様',role:'入居者',unit:x.unit,ref:s.tenant?'tenant:'+s.tenant:'',task:'dun:'+lid}):'');
+  var ap=GK.dun.aiPurpose(n),ai=ap&&GK.ai&&GK.can('ai.write')?GK.ai.draftBtn({host:'dunai-'+lid,unit:x.unit,lease:lid,purpose:ap,stage:n<3?n:0,title:GK.dun.STEP[n]+'の文面',label:'「'+x.t+'」の文面をAIで下書き'}):'';
+  var warn=s.warn?'<span class="pill '+(s.warn==='over'?'danger':'warn')+' dun-warn">'+esc(GK.dun.warnText(s))+'</span>':(GK.dun.hint(s)?'<span class="cap dun-hint">'+esc(GK.dun.hint(s))+'</span>':'');
+  var main=q?(function(){var inner='<span class="t1">'+hl(x.t,q)+'</span><div class="sub">'+hl(rl(x.unit),q)+(x.who?'<span class="who'+(x.who===ME?' me':'')+'">担当 '+(x.who===ME?'自分':hl(x.who,q))+'</span>':'')+'</div>';return '<button type="button" class="rowbtn" data-room="'+esc(x.unit)+'">'+inner+'</button>'})():roomBtn(x.unit,x.t,x.who,x);
+  return '<li class="trow dun-row"><span class="pill '+P[k][0]+'">'+P[k][1].replace('予定','')+'</span>'+main+
+    '<span class="end"><span class="due">'+(q?hl(dueText(x),q):esc(dueText(x)))+(k==='over'?'<span class="late">'+GK.overdueDays(x.due)+'日超過</span>':'')+'</span><span class="task-act">'+call+ai+
+    (GK.can('act.dunning')?'<button class="act ok" type="button" data-dundone="'+esc(lid)+'" data-step="'+n+'" aria-label="「'+esc(x.t)+'」を済みにする">済み</button>':'')+
+    (s.canSkip&&GK.can('act.dunning')?'<button class="act" type="button" data-dunskip="'+esc(lid)+'" data-step="'+n+'" aria-label="「'+esc(x.t)+'」を飛ばす">飛ばす</button>':'')+
+    (GK.can('act.record')?'<button class="act" type="button" data-log="'+esc(x.unit)+'" aria-label="「'+esc(x.t)+'」の対応を記録">記録</button>':'')+'</span></span>'+
+    (warn?'<div class="dun-note">'+warn+'</div>':'')+(ai?'<div class="dun-ai" id="dunai-'+esc(lid)+'"></div>':'')+'</li>';
+}
+function todayList(){
+    var P=TP,q=(D.tq||'').trim();
+    var list=todayItems();
+    var done=doneTasks();
+    var it=S.layout.b.filter(function(x){return x.id==='today'})[0],lim={s:3,m:5,l:10}[it?it.h:'m'];
+    var h='';
+    if(q)h+='<div class="filter-note">「'+esc(q)+'」に一致：'+list.length+'件<button class="act" type="button" data-tqclear="1">検索をやめる</button></div>';
+    if(D.kf)h+='<div class="filter-note">「'+P[D.kf][1]+'」だけ表示中（'+list.length+'件）<button class="act" type="button" data-kf="'+D.kf+'">絞り込みを解除</button></div>';
+    if(D.kf==='dun'&&GK.dun){
+      var ds=dunStates(),per=[0,0,0,0,0,0,0],wait=0,man=0;ds.forEach(function(s){per[s.step]++;if(!s.step){if(s.gua)wait++;else man++}});
+      h+='<p class="dun-sum">滞納 '+ds.length+'件：'+[1,2,3,4,5,6].filter(function(n){return n<4||per[n]}).map(function(n){return GK.dun.SHORT[n]+' '+per[n]+'件'}).concat(['保証会社の入金待ち '+wait+'件']).concat(man?['担当者の判断 '+man+'件']:[]).join('・')+'<span class="cap">（8日以上先の段階は、その日が近づくと出ます）</span></p>';
+    }
+    var row=function(x){
+      if(x.dun)return dunRow(x,q);
+      var k=kindOf(x),R=ROOMS[x.unit]||{},dt=dueText(x),later=x.due<=T?'明日へ':'1日延ばす',ap=isAppt(x),open=ap&&D.resched===x.id;
+      return '<li class="trow"><span class="pill '+P[k][0]+'">'+P[k][1].replace('予定','')+'</span>'+
+      (q?(function(){var inner='<span class="t1">'+hl(x.t,q)+'</span><div class="sub">'+(x.unit?hl(rl(x.unit),q):'<span class="noroom">'+hl('部屋なし',q)+'</span>')+(R.ten?'（'+hl(R.ten,q)+'）':'')+meOnly(x)+'<span class="who'+(x.who===ME?' me':'')+'">担当 '+(x.who===ME?'自分':hl(x.who,q))+'</span></div>';
+        return x.unit?'<button type="button" class="rowbtn" data-room="'+esc(x.unit)+'">'+inner+'</button>':'<span class="main-t">'+inner+'</span>'})():roomBtn(x.unit,x.t,x.who,x))+
+      '<span class="end"><span class="due">'+(q?hl(dt,q):esc(dt))+(k==='over'?'<span class="late">'+GK.overdueDays(x.due)+'日超過</span>':'')+'</span><span class="task-act">'+(isCallTask(x)?tenantCall(x.unit,x.id):'')+(GK.can('act.done')?'<button class="act ok" type="button" data-done="'+esc(x.id)+'" aria-label="「'+esc(x.t)+'」を完了">完了</button>':'')+
+      (ap?(GK.can('act.resched')?'<button class="act" type="button" data-resched="'+esc(x.id)+'" aria-expanded="'+open+'" aria-label="「'+esc(x.t)+'」の日程を変える">日程を変える</button>':'')
+        :(GK.can('act.later')?'<button class="act" type="button" data-later="'+esc(x.id)+'" aria-label="「'+esc(x.t)+'」の期限を1日延ばす">'+later+'</button>':''))+
+      (GK.can('act.record')?'<button class="act" type="button" data-logtask="'+esc(x.id)+'" aria-label="「'+esc(x.t)+'」の対応を記録">記録</button>':'')+'</span></span></li>'+(open&&GK.can('act.resched')?rsForm(x):'')};
+    if(!list.length)h+=q?'<p class="sample-note" style="padding:10px 0">一致する対応はありません。部屋番号・入居者名・担当者名でも探せます。</p>':'<p class="empty-ok">'+(D.kf==='dun'?'いま連絡・請求が必要な滞納はありません。':D.mine?'自分の担当の確認はすべて終わりました。':'今日の確認はすべて終わりました。')+'</p>';
+    else if((D.showAll||q)&&list.length>lim)h+='<div class="scroll-list" tabindex="0" aria-label="すべての対応（'+list.length+'件）"><ul class="rows">'+list.map(row).join('')+'</ul></div>'+(q?'':'<div class="more"><button class="act" type="button" data-more="0">たたむ（上位'+lim+'件だけ表示）</button></div>');
+    else{h+='<ul class="rows">'+list.slice(0,lim).map(row).join('')+'</ul>';if(list.length>lim)h+='<div class="more"><button class="act" type="button" data-more="1">ほか '+(list.length-lim)+'件を表示</button><span class="cap">期限の近い順に上位'+lim+'件を表示中（ブロックの高さで件数が変わります）</span></div>'}
+    if(D.kf==='dun'){
+      var wt=dunStates().filter(function(s){return !s.step&&(!D.mine||s.who===ME)});
+      if(wt.length)h+='<h4 class="dun-wait-h">自動の段階はすべて済み（入金待ち・担当者の判断）</h4><ul class="rows">'+wt.map(function(s){var nm=(s.name?s.name+' 様 ':'')+s.months+' '+GK.yen(s.amount),last=s.steps[s.steps.length-1];
+        return '<li class="trow"><span class="pill mute">'+(s.gua?'入金待ち':'担当者の判断')+'</span>'+roomBtn(s.unit,nm,s.who,null)+'<span class="end"><span class="due">'+esc(s.label)+(last?'<span class="late dun-muted">'+esc(GK.sd(last.at))+' '+esc(GK.dun.SHORT[last.n])+(last.skip?' 飛ばした':' 済み')+'</span>':'')+'</span></span></li>'}).join('')+'</ul>';
+    }
+    if(done.length)h+='<div class="done-head"><button class="act" type="button" data-showdone="1" aria-expanded="'+!!D.showDone+'">今日完了した対応 '+done.length+'件を'+(D.showDone?'隠す':'表示')+'</button></div>'+(D.showDone?'<ul class="rows">'+done.map(function(x){return '<li class="done"><span class="main-t">'+esc(x.t)+'<div class="sub">'+esc(rl(x.unit))+meOnly(x)+'</div></span><span class="end">'+(GK.can('act.done')?'<button class="act" type="button" data-undone="'+esc(x.id)+'" aria-label="「'+esc(x.t)+'」を未完了に戻す">戻す</button>':'')+'</span></li>'}).join('')+'</ul>':'');
+    return h;
+}
+/* ---------- ＋ やることを追加 / メモからやることにする (one form; state in D.td so a re-render keeps what was typed) ----------
+   D.td = {from:'today'|'memo', memo:<memo id>, memoS:'個人'|'共有', t, due, who, unit, uq, priv, privSet (scope chosen by hand), err:{id,msg}}
+   見せる範囲: 全員 when a room is chosen, 自分だけ when not (until chosen by hand). 自分だけ = only the creator sees it (admins too do not). */
+function tdStaff(){return (typeof GK.staffList==='function'?GK.staffList():[]).filter(function(s){return s.active!==false&&s.n})}
+function tdNew(from,o){
+  o=o||{};
+  var td={from:from,memo:o.memo||'',memoS:o.memoS||'',t:o.t||'',due:T,who:ME,unit:'',uq:'',priv:true,privSet:false,err:null};
+  if(from==='memo'){td.priv=o.memoS!=='共有';td.privSet=true}
+  return td;
+}
+function tdHits(q){q=String(q||'').trim();return q?searchHits(q).slice(0,6):[]}
+function tdHitsHtml(){
+  var td=D.td;if(!td||td.unit)return '';
+  var ks=tdHits(td.uq);
+  if(!String(td.uq||'').trim())return '';
+  if(!ks.length)return '<p class="cap" id="td-none">一致する部屋はありません。空のままなら「部屋なし」になります。</p>';
+  return '<ul class="td-hits" id="td-rooms" aria-label="部屋の候補">'+ks.map(function(k){var R=ROOMS[k];return '<li><button type="button" data-tdroom="'+esc(k)+'">'+esc(R.p+' '+R.n)+(R.ten?'　'+esc(R.ten):'')+'</button></li>'}).join('')+'</ul>';
+}
+function tdForm(){
+  var td=D.td,er=td.err||{},quick=[[T,'今日'],[rel(1),'明日'],[rel(7),'来週']],memo=td.from==='memo';
+  var staff=tdStaff(),hasMe=staff.some(function(s){return s.n===ME});
+  var opts=(hasMe?'':'<option value="'+esc(ME)+'">自分（'+esc(ME)+'）</option>')+staff.map(function(s){return '<option value="'+esc(s.n)+'"'+(s.n===(td.priv?ME:td.who)?' selected':'')+'>'+(s.n===ME?'自分（'+esc(s.n)+'）':esc(s.n))+'</option>'}).join('');
+  var inv=function(id){return er.id===id?' aria-invalid="true"':''};
+  return '<form class="td-form" id="td-form" novalidate aria-labelledby="td-h">'+
+    '<h3 id="td-h">'+(memo?'メモからやることにする':'やることを追加')+'</h3>'+
+    '<div class="field wide"><label for="td-t">内容<span class="req">必須</span></label><input id="td-t" type="text" value="'+esc(td.t)+'" required autocomplete="off" aria-describedby="td-err" placeholder="例：火災保険の更新書類を確認"'+inv('td-t')+'></div>'+
+    '<div class="field"><label for="td-due">期限</label><input id="td-due" type="date" min="'+T+'" value="'+esc(td.due)+'" aria-describedby="td-err"'+inv('td-due')+'>'+
+      '<span class="chips" role="group" aria-label="期限をすばやく選ぶ">'+quick.map(function(q){return '<button class="act" type="button" data-tddue="'+q[0]+'" aria-pressed="'+(td.due===q[0])+'">'+q[1]+'</button>'}).join('')+'</span></div>'+
+    '<div class="field"><label for="td-who">担当</label><select id="td-who"'+(td.priv?' disabled aria-describedby="td-whonote"':'')+'>'+opts+'</select>'+(td.priv?'<span class="cap" id="td-whonote">自分だけのやることは、担当も自分です</span>':'')+'</div>'+
+    '<div class="field wide"><label for="td-uq">部屋（任意）</label>'+
+      (td.unit?'<span class="td-room"><b>'+esc(rl(td.unit))+'</b><button class="act" type="button" data-tdroomclear="1" id="td-roomclear">部屋なしにする</button></span>'
+        :'<input id="td-uq" type="search" value="'+esc(td.uq)+'" autocomplete="off" placeholder="物件名・部屋番号・入居者名で探す（空なら部屋なし）" aria-describedby="td-err td-uqnote"'+inv('td-uq')+'><span class="cap" id="td-uqnote">候補から選びます。空のままなら「部屋なし」</span><div id="td-hitbox">'+tdHitsHtml()+'</div>')+'</div>'+
+    '<fieldset class="wide"><legend>見せる範囲</legend><div class="radios">'+
+      '<label><input type="radio" name="td-scope" id="td-s-all" value="all"'+(td.priv?'':' checked')+'>全員</label>'+
+      '<label><input type="radio" name="td-scope" id="td-s-me" value="me"'+(td.priv?' checked':'')+'>自分だけ</label></div>'+
+      '<span class="cap" id="td-hint">自分だけ：ほかの人には見えません（管理者にも見えません）。全員：担当者みんなの「今日確認すること」に出ます。</span></fieldset>'+
+    '<p class="err" id="td-err" role="alert"'+(er.msg?'':' hidden')+'>'+esc(er.msg||'')+'</p>'+
+    '<div class="group wide"><button class="btn primary" type="submit">追加する</button><button class="btn" type="button" data-tdcancel="1">やめる</button><span class="cap">Enter で追加 · Esc でやめる</span></div>'+
+  '</form>';
+}
+function tdRender(focusId){renderBoard();if(focusId)refocus(focusId)}
+function tdOpen(from,o,focusSel){
+  if(!GK.can('act.addtask'))return;
+  if(from==='memo'&&!GK.can('act.memotodo'))return;
+  D.td=tdNew(from,o);D.td.ret=focusSel||'';renderBoard();
+  var f=$('#td-t');if(f){f.focus();try{f.setSelectionRange(f.value.length,f.value.length)}catch(e){}}
+}
+function tdClose(){var r=D.td&&D.td.ret;D.td=null;renderBoard();if(r)refocusSel(r)}
+function tdClearErr(id){if(!D.td||!D.td.err||D.td.err.id!==id)return;D.td.err=null;var e=$('#td-err');if(e){e.hidden=true;e.textContent=''}var f=$('#'+id);if(f)f.removeAttribute('aria-invalid')}
+function tdErr(id,msg){D.td.err={id:id,msg:msg};tdRender(id)}
+function tdSave(){
+  var td=D.td;if(!td)return;
+  if(!GK.can('act.addtask')||(td.from==='memo'&&!GK.can('act.memotodo'))){D.td=null;renderBoard();return}
+  var t=String(td.t||'').replace(/\s+/g,' ').trim();
+  if(!t)return tdErr('td-t','内容を入れてください（例：火災保険の更新書類を確認）。');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(td.due||''))return tdErr('td-due','期限の日付を入れてください。');
+  if(td.due<T)return tdErr('td-due','今日（'+GK.sd(T)+'）より前の日付にはできません。');
+  var unit=td.unit;
+  if(!unit&&String(td.uq||'').trim()){var hs=tdHits(td.uq);if(hs.length===1)unit=hs[0];else return tdErr('td-uq',hs.length?'部屋を候補から選んでください（または入力を消すと「部屋なし」）。':'一致する部屋がありません。入力を消すと「部屋なし」になります。')}
+  if(unit&&!ROOMS[unit])return tdErr('td-uq','その部屋が見つかりません。選び直してください。');
+  var priv=!!td.priv,who=priv?ME:(td.who||ME);
+  var k=GK.addTask(unit,t,td.due,{private:priv,who:who}),kid=k.id;
+  if(!priv&&who!==ME)k.who=who;
+  /* the shared 対応履歴 never shows a private to-do's text */
+  var rec=priv?logIt(GK.taskLogText(k,'追加')):logIt('やることを追加：'+t+'（'+(unit?rl(unit):'部屋なし')+'・全員）',unit);
+  GK.save();
+  var memoId=td.from==='memo'?td.memo:'',st={gone:null};
+  D.td=null;if(kindOf(k)!=='later'&&D.kf&&D.kf!==kindOf(k))D.kf='';render();
+  var back=function(){
+    dropTasks([kid]);unlog([rec]);
+    if(st.gone){var cur=memos();if(!cur.some(function(x){return x&&x.id===st.gone.m.id}))cur.splice(Math.min(st.gone.i,cur.length),0,st.gone.m)}
+    if(GK.closeConfirm)GK.closeConfirm();GK.save();
+  };
+  var msg='やることを追加しました'+(priv?'（自分だけ）':'')+(kindOf(k)==='later'?'。8日以降の期限なので、今週の予定・部屋の画面に出ます':'');
+  toast(msg,back);
+  if(memoId&&GK.can('act.memo')&&typeof GK.confirmBar==='function'){
+    /* 「メモは残しますか？」 in the page (no confirm()): 残す is the default (focused, Esc) */
+    var btn=document.querySelector('[data-memotodo="'+memoId+'"]'),note=btn&&btn.closest('.note');
+    if(btn)btn.focus();
+    if(note)GK.confirmBar(note,'メモは残しますか？','消す',function(){
+      var ns=memos(),ni=-1;ns.forEach(function(x,j){if(ni<0&&x&&x.id===memoId)ni=j});if(ni<0)return;
+      st.gone={i:ni,m:ns.splice(ni,1)[0]};GK.save();renderBoard();
+      toast('メモを消しました（やることは追加済み）',back);
+      var b2=document.querySelector('[data-tdopen]')||$('#note-text');if(b2)b2.focus();
+    },{noLabel:'残す'});
+  }else{
+    var r=memoId?'[data-memotodo="'+memoId+'"]':'[data-tdopen]';refocusSel(r);
+  }
+}
+BLOCKS.week={t:'今週の予定',d:'1週間の対応を日付ごとに。日付を押すとその日の予定を表示',roles:['rental'],w:12,h:'s',
+  meta:function(){return GK.sd(WEEK[0][0])+'〜'+GK.sd(WEEK[6][0])},
+  r:function(){
+    var open=openTasks(),by={};open.forEach(function(x){if(kindOf(x)!=='over'){(by[x.due]=by[x.due]||[]).push(x)}});
+    Object.keys(by).forEach(function(k){by[k].sort(cmpDue)});
+    var over=open.filter(function(x){return kindOf(x)==='over'}).sort(cmpDue);
+    var h='<div class="week" role="group" aria-label="日付を選ぶ">'+WEEK.map(function(w,i){var n=(by[w[0]]||[]).length;return '<button type="button" class="day'+(w[1]==='日'?' sun':w[1]==='土'?' sat':'')+(i===0?' today':'')+'" data-day="'+w[0]+'" aria-pressed="'+(D.day===w[0])+'" aria-label="'+jd(w[0])+(i===0?' 今日':'')+' 予定'+n+'件"><span class="dw" aria-hidden="true">'+(i===0?'今日':w[1])+'</span><span class="dd" aria-hidden="true">'+(+w[0].slice(8))+'</span><span class="dc" aria-hidden="true">'+(n?'<span class="dot">'+n+'</span>':'')+'</span></button>'}).join('')+'</div>';
+    var list=D.day==='over'?over:(by[D.day]||[]);
+    var label=D.day==='over'?'期限超過':jd(D.day);
+    h+='<div class="week-list"><div class="cap">'+label+'の予定 '+list.length+'件</div>'+(list.length?'<ul class="rows">'+list.map(function(x){return '<li>'+roomBtn(x.unit,x.t,x.who,x)+'<span class="end">'+esc(dueText(x))+'</span></li>'}).join('')+'</ul>':'<p class="sample-note">予定はありません。</p>')+'</div>';
+    if(over.length&&D.day!=='over')h+='<div class="week-over"><button class="act" type="button" data-day="over" style="color:var(--danger)">期限超過 '+over.length+'件を見る</button></div>';
+    return h;
+  }};
+BLOCKS.search={t:'管理台帳を探す',d:'物件名・部屋番号・入居者名で探して、部屋の情報を1画面で開く',roles:['rental'],w:4,h:'m',
+  r:function(){return '<div class="search"><input type="search" id="mock-search" value="'+esc(D.q)+'" placeholder="例：桜台 301、田中、GK-0457" aria-label="物件・部屋・入居者を検索" autocomplete="off"></div><div id="search-results">'+searchList()+'</div>'}};
+BLOCKS.history={t:'対応履歴',d:'最近の連絡・対応の記録',roles:['rental'],w:6,h:'m',
+  r:function(){var hs=allHist().slice(0,5);return (hs.length?'<ul class="rows">'+hs.map(function(x){return '<li>'+when(esc(x.w))+(ROOMS[x.room]?'<button type="button" class="rowbtn" data-room="'+esc(x.room)+'"><span class="t1">'+callMark(x.t)+esc(x.t)+'</span><div class="sub">'+esc(rl(x.room))+' · '+esc(x.who)+'</div></button>':'<span class="main-t">'+esc(x.t)+'<div class="sub">'+esc(x.room?rl(x.room):'部屋なし')+' · '+esc(x.who)+'</div></span>')+'</li>'}).join('')+'</ul>':'<p class="sample-note">まだ記録がありません。</p>')+(GK.can('act.record')?'<button class="link" type="button" data-qa="log">＋ 対応を記録する</button>':'')}};
+var REN_P={'未案内':'warn','案内作成済み':'info','送付済み':'info','更新合意':'ok'};
+BLOCKS.renewals={t:'これからの契約更新',d:'満了が近い契約。未案内をまとめて選んで案内を作成',roles:['rental'],w:6,h:'m',
+  meta:function(){return '未案内 '+GK.renewalsDue().length+'件'},
+  r:function(){
+    var all=renList(),it=S.layout.b.filter(function(x){return x.id==='renewals'})[0],lim={s:4,m:8,l:16}[it?it.h:'m'],list=all.slice(0,lim);
+    var n=Object.keys(D.sel).filter(function(k){return D.sel[k]}).length,canRen=GK.can('act.renew');
+    return '<div class="tbl-wrap"><table><thead><tr><th><span class="sr">選択</span></th><th>物件・部屋</th><th class="c-ten">入居者</th><th>満了日</th><th>状況</th></tr></thead><tbody>'+
+      list.map(function(r){var R=ROOMS[r.room]||{};return '<tr><td>'+(r.st==='未案内'&&canRen?'<label class="ren-pick"><input type="checkbox" id="ren-'+esc(r.lease)+'" data-ren="'+esc(r.lease)+'"'+(D.sel[r.lease]?' checked':'')+' aria-label="'+esc(rl(r.room))+'を選ぶ"></label>':'')+'</td><td><button type="button" class="rowbtn" data-room="'+esc(r.room)+'"><span class="t1">'+esc(rl(r.room))+'</span></button></td><td class="c-ten">'+esc(R.ten||'')+'</td><td>'+GK.sd(r.end)+'</td><td><span class="pill '+(REN_P[r.st]||'mute')+'">'+esc(r.st)+'</span></td></tr>'}).join('')+
+      '</tbody></table></div>'+(all.length>list.length?'<p class="cap" style="margin-top:4px">満了の近い順に '+list.length+' / '+all.length+'件を表示中</p>':'')+
+      (canRen?'<div class="selbar"><span>'+(n?n+'件を選択中':'未案内の契約を選ぶと、案内をまとめて作れます')+'</span><span class="group"><button class="act" type="button" data-selall="1">未案内をすべて選ぶ</button><button class="btn primary" type="button" data-mkren="1"'+(n?'':' disabled')+'>更新案内を作成'+(n?'（'+n+'件）':'')+'</button></span></div>':'')+'<a class="link" href="contracts.html" style="display:inline-block;margin-top:8px;font-size:12.5px">契約・更新ですべての契約を見る →</a>';
+  }};
+/* vacant rooms and rooms with a move-out notice, from the store */
+function vacRooms(){
+  return GK.db.units.filter(function(u){var a=GK.activeLease(u.id);return !a||a.notice}).map(function(u){
+    var a=GK.activeLease(u.id),past=PAST[u.id]||[],nx=GK.db.leases.filter(function(l){return l.unit===u.id&&(l.status==='申込中'||l.status==='入居予定')})[0];
+    var days=!a&&past.length?GK.days(past[0].end,T):-1;
+    return {id:u.id,lay:u.lay,st:GK.unitStatus(u),notice:a?a.notice.date:'',days:days,next:nx?nx.start:''};
+  }).sort(function(a,b){return (a.notice?1:0)-(b.notice?1:0)||b.days-a.days});
+}
+BLOCKS.vacancy={t:'空室',d:'空いている部屋と空室期間',roles:['rental'],w:4,h:'s',
+  meta:function(){return '空室 '+vacRooms().filter(function(v){return !v.notice}).length+' / '+GK.db.units.length+'室'},
+  r:function(){
+    var vs=vacRooms(),it=S.layout.b.filter(function(x){return x.id==='vacancy'})[0],lim={s:3,m:5,l:10}[it?it.h:'m'];
+    return (vs.length?'<ul class="rows">'+vs.slice(0,lim).map(function(v){
+      var end=v.notice?'<b>'+GK.sd(v.notice)+' 退去予定</b>':'<b>'+(v.days>=0?'空室 '+v.days+'日':'空室（期間の記録なし）')+'</b>'+(v.next?'<span>'+GK.sd(v.next)+'〜 入居予定</span>':'');
+      return '<li>'+roomBtn(v.id,v.lay+' · '+v.st)+'<span class="end vac-end">'+end+'</span></li>'}).join('')+'</ul>':'<p class="empty-ok">空室はありません。</p>')+
+      '<a class="link" href="properties.html" style="display:inline-block;font-size:12.5px">空室をすべて見る →</a>';
+  }};
+BLOCKS.notes={t:'メモ',d:'自分用と、担当者みんなで見る共有メモ',roles:['rental','accounting','purchasing','admin'],w:4,h:'s',
+  r:function(){var ns=memos(),cm=GK.can('act.memo'),ct=GK.can('act.memotodo');return (ns.length?'<div class="notes">'+ns.map(function(x,i){x=x||{};var t=String(x.t||''),short=t.length>20?t.slice(0,20)+'…':t;return '<div class="note" data-note="'+esc(x.id||'')+'"><span class="pill '+(x.s==='共有'?'info':'mute')+'">'+(x.s==='共有'?'共有':'個人')+'</span>'+esc(t)+(!cm?'':'<button class="del" type="button" data-delnote="'+esc(x.id||'')+'" aria-label="メモ「'+esc(short)+'」を削除">'+ICON.x+'</button>')+
+      (ct&&x.id?'<br><button class="act note-todo" type="button" data-memotodo="'+esc(x.id)+'" aria-expanded="'+!!(D.td&&D.td.memo===x.id)+'" aria-label="メモ「'+esc(short)+'」をやることにする">やることにする</button>':'')+'</div>'}).join('')+'</div>':'<p class="sample-note">メモはまだありません。</p>')+
+    (D.td&&D.td.from==='memo'&&ct?tdForm():'')+
+    (!cm?'':'<form class="note-form" id="note-form"><input type="text" id="note-text" placeholder="メモを追加" aria-label="メモの内容" autocomplete="off"><select id="note-scope" aria-label="公開範囲（個人＝自分だけ／共有＝担当者みんな）"><option>個人</option><option>共有</option></select><button class="btn" type="submit">追加</button></form>')}};
+/* days from today to an ISO date (no date: far away) */
+function daysLeft(due){return /^\d{4}-\d{2}-\d{2}/.test(due||'')?GK.days(T,due):99}
+function leftPill(due){var n=daysLeft(due);return n===0?'<span class="pill danger">今日まで</span>':n<0?'<span class="pill danger">'+(-n)+'日超過</span>':n<=7?'<span class="pill danger">あと'+n+'日</span>':n<=14?'<span class="pill warn">あと'+n+'日</span>':'<span class="pill mute">あと'+n+'日</span>'}
+/* ---------- 管理の引継ぎ: built only from GK.db.takeovers (takeover.html), via the GK.takeover* helpers ---------- */
+var TO_STEPS=['物件とオーナー','受け取る書類','部屋と入居者','お知らせ','確認して登録'];
+var HOF=[['','進行中'],['soon','期限7日以内'],['unknown','保証会社 確認中'],['miss','書類不足'],['done','完了']];
+function toList(){
+  var L=typeof GK.takeovers==='function'?GK.takeovers():GK.db.takeovers;
+  return (Array.isArray(L)?L:[]).filter(function(t){return t&&typeof t==='object'&&t.id});
+}
+function toStep(t){return Math.max(0,Math.min(4,+t.step||0))}
+function toNext(t){
+  if(typeof GK.takeoverNext==='function'){try{var n=GK.takeoverNext(t);if(n)return n}catch(e){}}
+  return {label:t.done?'引継ぎ完了':TO_STEPS[toStep(t)],due:t.start||'',step:t.done?5:toStep(t),done:!!t.done};
+}
+function toRooms(t){
+  if(typeof GK.takeoverRooms==='function'){try{var r=GK.takeoverRooms(t);if(r)return r}catch(e){}}
+  var rs=(t.rooms||[]).filter(function(x){return x&&String(x.no||'').trim()});
+  return {rooms:rs.length,occupied:0,vacant:0,yes:0,no:0,unknown:rs.filter(function(x){return String(x.ten||'').trim()&&x.gua!=='あり'&&x.gua!=='なし'}).length};
+}
+/* documents still to receive (counted once the documents step has been reached; the 保証会社 document only when a room may have one) */
+function toMiss(t){
+  if(toStep(t)<1||!Array.isArray(t.docs))return 0;
+  var R=toRooms(t),needG=!(R.occupied>0&&R.yes===0&&R.unknown===0);
+  return t.docs.filter(function(d){return Array.isArray(d)&&!d[1]&&(needG||!/^保証会社の契約書/.test(String(d[0]||'')))}).length;
+}
+function toDue(t){return toNext(t).due||''}
+function hoMatch(t,f){
+  if(f==='done')return !!t.done;
+  if(t.done)return false;
+  if(f==='soon')return daysLeft(toDue(t))<=7;
+  if(f==='unknown')return toRooms(t).unknown>0;
+  if(f==='miss')return toMiss(t)>0;
+  return true;
+}
+function toOpen(){return toList().filter(function(t){return !t.done})}
+function toHref(t){return 'takeover.html#to-'+encodeURIComponent(t.id)}
+/* a finished takeover is a managed building: open its first room in 物件・台帳 */
+function toLedger(t){
+  if(!t.propId)return '';
+  var u=GK.db.units.filter(function(x){return x.prop===t.propId})[0];
+  if(u)return 'properties.html#room-'+u.id;
+  var r=(t.rooms||[]).filter(function(x){return x&&String(x.no||'').trim()})[0];
+  return 'properties.html'+(r?'#room-'+t.propId+'-'+String(r.no).trim():'');
+}
+function hoList(){
+  var q=(D.hoq||'').trim(),f=D.hof||'';
+  var list=toList().filter(function(t){return hoMatch(t,f)&&GK.hit(q,[t.name||'',toNext(t).label,(t.prev&&t.prev.n)||'',(t.prop&&t.prop.addr)||''])})
+    .sort(function(a,b){return f==='done'?((a.doneAt||'')<(b.doneAt||'')?1:-1):daysLeft(toDue(a))-daysLeft(toDue(b))});
+  D.hoCount=list.length;
+  var it=S.layout.b.filter(function(x){return x.id==='handover'})[0],lim={s:3,m:5,l:10}[it?it.h:'m'];
+  var row=function(t){
+    var nx=toNext(t),st=t.done?5:toStep(t),R=toRooms(t),miss=toMiss(t),href=toHref(t),nm=t.name||'（物件名まだ）';
+    var bars='<span class="msteps" role="img" aria-label="'+(t.done?'5 / 5 手順完了':'手順 '+(st+1)+' / 5：'+TO_STEPS[st])+'" title="'+(t.done?'引継ぎ完了':'手順 '+(st+1)+'/5：'+TO_STEPS[st])+'">'+TO_STEPS.map(function(s,j){return '<i class="'+(j<st?'on':j===st?'cur':'')+'"></i>'}).join('')+'</span>';
+    var warn=t.done?'':(miss?'<span class="ho-warn">受け取っていない書類 '+miss+'件</span>':'')+(R.unknown?'<span class="ho-warn">保証会社 確認中 '+R.unknown+'室</span>':'');
+    var ledger=t.done?toLedger(t):'';
+    return '<li class="horow"><a class="rowbtn ho-name" href="'+href+'"><span class="t1">'+hl(nm,D.hoq)+'</span><div class="sub">'+R.rooms+'室 · 管理開始 '+(t.start?GK.sd(t.start):'未定')+'</div></a>'+bars+
+      '<span class="ho-n">'+(t.done?'<span><span class="pill ok">引継ぎ完了</span>'+(t.doneAt?' <span class="cap">'+GK.sd(t.doneAt)+' 登録</span>':'')+'</span>':'<span>次：'+hl(nx.label,D.hoq)+'</span>')+warn+'</span>'+
+      '<span class="ho-due">'+(t.done?'':nx.due?leftPill(nx.due)+'<span class="cap" title="入居者へのお知らせを送る日（それまでに準備をそろえます）">期限 '+GK.sd(nx.due)+'</span>':'')+'</span>'+
+      (t.done?(ledger?'<a class="act" href="'+esc(ledger)+'">物件・台帳で見る</a>':'<span></span>'):'<a class="act ok" href="'+href+'" aria-label="「'+esc(nm)+'」の引継ぎを続きから">続きから</a>')+'</li>';
+  };
+  if(!list.length)return '<p class="sample-note" style="padding:10px 0">'+(q?'「'+esc(D.hoq)+'」に一致する物件はありません。':f==='done'?'完了した引継ぎはまだありません。':f?'該当する物件はありません。':'引継ぎ中の物件はありません')+'</p>';
+  var h='';
+  if(D.hoAll||q||list.length<=lim)h+=(list.length>lim?'<div class="scroll-list" tabindex="0" aria-label="引継ぎの物件（'+list.length+'件）">':'')+'<ul class="rows">'+list.map(row).join('')+'</ul>'+(list.length>lim?'</div>':'')+(D.hoAll&&!q&&list.length>lim?'<div class="more"><button class="act" type="button" data-homore="0">たたむ</button></div>':'');
+  else h+='<ul class="rows">'+list.slice(0,lim).map(row).join('')+'</ul><div class="more"><button class="act" type="button" data-homore="1">ほか '+(list.length-lim)+'物件を表示</button><span class="cap">期限の近い順に表示中</span></div>';
+  return h;
+}
+BLOCKS.handover={t:'管理の引継ぎ',d:'ほかの管理会社から引き継ぐ物件の進み具合。新しい引継ぎもここから始めます',roles:['rental','admin'],w:6,h:'m',
+  meta:function(){return '進行中 '+toOpen().length+'物件'},
+  r:function(){
+    var f=D.hof||'',all=toList();
+    var start='<div class="ho-start"><a class="btn primary" href="takeover.html">＋ 新しい引継ぎを始める</a><span class="cap">流れ：物件とオーナー → 受け取る書類 → 部屋と入居者 → お知らせ → 確認して登録</span></div>';
+    if(!all.length)return start+'<p class="sample-note" style="padding:6px 0">引継ぎ中の物件はありません</p>';
+    return start+
+      '<div class="hof" role="group" aria-label="絞り込み">'+HOF.map(function(x){var n=all.filter(function(t){return hoMatch(t,x[0])}).length;return '<button class="fchip'+(x[0]==='soon'&&n?' hot':'')+'" type="button" data-hof="'+x[0]+'" aria-pressed="'+(f===x[0])+'">'+x[1]+' <b>'+n+'</b></button>'}).join('')+'</div>'+
+      '<div class="tsearch">'+ICON.search+'<input type="search" id="ho-q" value="'+esc(D.hoq||'')+'" placeholder="物件名・次の作業で探す" aria-label="引継ぎの物件を検索" autocomplete="off"></div>'+
+      '<div id="ho-list">'+hoList()+'</div>';
+  }};
+BLOCKS.moveout={t:'退去の段取り',d:'退去が決まった部屋のやることチェック',roles:['rental'],w:6,h:'m',
+  meta:function(){var m=D.mo;return m?m.items.filter(function(x){return x[1]}).length+' / '+m.items.length+' 完了':''},
+  r:function(){
+    var m=D.mo,ls=moLeases(),l=m&&GK.lease(m.lease);
+    if(!m||!l||!l.notice)return '<p class="sample-note">退去の連絡があった部屋はありません。</p>';
+    var nx=ls.filter(function(x){return x.id!==l.id})[0];
+    return '<div class="mo-head">'+roomBtn(m.room,'退去日 '+GK.sdw(l.notice.date))+(nx?'<span class="cap">次の退去：'+esc(rl(nx.unit))+'（'+GK.sd(nx.notice.date)+'）</span>':'')+'</div><div class="check">'+m.items.map(function(x,i){return GK.can('act.mocheck')?'<label class="'+(x[1]?'done':'')+'"><input type="checkbox" id="mo-'+i+'" data-mo="'+i+'"'+(x[1]?' checked':'')+'><span>'+esc(x[0])+'</span></label>':'<label class="'+(x[1]?'done':'')+'"><span class="pill '+(x[1]?'ok':'mute')+'">'+(x[1]?'済み':'まだ')+'</span><span>'+esc(x[0])+'</span></label>'}).join('')+'</div>';
+  }};
+/* 経理への引継ぎ (added 2026-10-19): one status line for last month and this month (GK.acctLatest reads GK.db.acct) */
+function acctLine(X,pm){
+  if(typeof GK.acctLatest!=='function'||!GK.can('page.sales'))return '';
+  var one=function(m){var a=GK.acctLatest(m);return X.mon(m)+' '+esc(a.label)+(a.ver>1?'（第'+a.ver+'版）':'')+(a.state==='returned'&&a.reason?'：'+esc(a.reason):'')};
+  return '<p class="cap" id="acctLine">経理への引継ぎ：'+one(pm)+' · '+one(X.cur())+' <a class="link" href="sales.html#tab-sales">経理へ提出 →</a></p>';
+}
+/* ---------- 入出金の確認 (added 2026-10-19): this month's figures from GK.money (ganki-money.js), each linking to money.html ---------- */
+BLOCKS.money={t:'入出金の確認',d:'今月の口座の入出金・マネーフォワードとの照合・オーナー送金・締めの状況',roles:['rental','accounting','admin'],w:12,h:'s',
+  meta:function(){var X=GK.money;return X?X.monY(X.cur())+'分':''},
+  r:function(){
+    var X=GK.money;
+    if(!X||typeof X.summary!=='function')return '<p class="sample-note">入出金の状況は「入出金」の画面で確かめてください。</p><a class="btn" href="money.html">入出金を開く</a>';
+    var s,due;try{s=X.summary(X.cur());due=X.dueUnsent()}catch(err){return '<a class="btn" href="money.html">入出金を開く</a>'}
+    var c=s.closed,pm=X.addMonth(X.cur(),-1),pc=X.hasMonth(pm)&&X.month(pm).closed;
+    var tile=function(cls,href,k,v,unit,sub){return '<a class="stat '+cls+'" href="money.html#'+href+'"><span class="k">'+k+'</span><span class="v">'+v+(unit?'<small>'+unit+'</small>':'')+'</span>'+(sub?'<span class="s2">'+sub+'</span>':'')+'</a>'};
+    return '<div class="stats money-stats">'+
+      tile(s.none?'danger':s.auto?'info':'','tab-check','未確認',s.none+s.auto,'件','要確認 '+s.none+'・確認待ち '+s.auto)+
+      tile(s.mf?'warn':'','tab-mf','MFとの食い違い',s.mfLoaded?s.mf:'—',s.mfLoaded?'件':'',s.mfLoaded?'':'MFのCSVがまだです')+
+      tile(due.length?'warn':'',due.length?'tab-remit-'+due[0].m:'tab-remit','未送金のオーナー',due.length,'人',due.length?esc(due.map(function(x){return x.owner.n+' 様（'+x.kinds.join('・')+'）'+GK.sd(x.date)}).join('、'))+' 送金予定':'')+
+      tile(c?'ok':'','tab-close','締め（'+X.mon(X.cur())+'）',c?'締め済み':'未締め','',pc?X.mon(pm)+'は締め済み':'')+
+      '</div><a class="link" href="sales.html#tab-meeting">月末会議の資料 →</a>'+acctLine(X,pm);
+  }};
+BLOCKS.kpi.r=function(){return '<div class="stats"><div class="stat danger"><div class="k">未収</div><div class="v">¥412,000<small>8件</small></div></div><div class="stat"><div class="k">空室率</div><div class="v">3.8%<small>7 / 186室</small></div></div><div class="stat danger"><div class="k">期限超過の対応</div><div class="v">'+cnt('over')+'<small>件</small></div></div><div class="stat warn"><div class="k">CSV照合 要確認</div><div class="v">4<small>件</small></div></div><div class="stat"><div class="k">今月の管理部売上</div><div class="v">¥2,184,000</div></div></div>'};
+
+var ACTIONS={
+  log:'対応を記録', succession:'新しい管理引継ぎ', notice:'更新案内・退去の連絡', turnover:'入居者の入れ替え', vacant:'空室を見る', renewal:'更新の案内'
+};
+/* 機能の設定: the feature behind each block / quick action (OFF = not drawn, not in the drawer or the palette) */
+var BLOCK_FEAT={today:'home.today',week:'home.week',search:'home.search',history:'home.history',renewals:'home.renewals',vacancy:'home.vacancy',occupancy:'home.occupancy',notes:'home.notes',handover:'home.handover',moveout:'home.moveout',money:'home.money'};
+function blockOk(id){return GK.can(BLOCK_FEAT[id]||'')}
+var ACTION_FEAT={log:'act.record',succession:'page.takeover',notice:'page.contracts',turnover:'page.turnover',vacant:'page.props',renewal:'page.contracts'};
+function actionOk(k){return GK.can(ACTION_FEAT[k]||'')}
+function shownBlocks(){return S.layout.b.filter(function(x){return blockOk(x.id)})}
+/* a button that opens another page (data-go) is not drawn when that page is OFF */
+function gateGo(h){return String(h).replace(/<button\b[^>]*\bdata-go="([^"]*)"[^>]*>[\s\S]*?<\/button>/g,function(m,u){return GK.linkOk(u.replace(/&amp;/g,'&'))?m:''})}
+/* move among the blocks that are shown (a block switched OFF keeps its place in the saved layout) */
+function moveVis(id,dir){var vs=shownBlocks(),vi=-1;vs.forEach(function(x,j){if(x.id===id)vi=j});var nb=vs[vi+dir];if(vi<0||!nb)return;moveTo(id,idx(nb.id))}
+var ROLES={
+  rental:{name:'賃貸管理',home:'賃貸管理ホーム',note:'期限・退去・物件検索が上に来る配置です。'},
+  accounting:{name:'経理',home:'賃貸管理ホーム（経理）',note:'未収・CSV照合が上に来る配置です。'},
+  purchasing:{name:'仕入れ',home:'案件ホーム',note:'仕入れの人はログイン後、案件のホームから始まる想定です。'},
+  admin:{name:'管理者',home:'管理者ホーム',note:'全体の数字と、担当ごとの状況・権限が見える配置です。'}
+};
+var DEFAULTS={
+  rental:{b:[['today',8,'m'],['vacancy',4,'m'],['money',12,'s'],['search',12,'s'],['week',12,'s'],['handover',6,'m'],['renewals',6,'m'],['moveout',6,'m'],['history',6,'m'],['occupancy',6,'s'],['notes',6,'s']],a:['log','turnover','vacant','succession','notice']},
+  accounting:{b:[['arrears',8,'m'],['csv',4,'m'],['billing',6,'m'],['remit',6,'m'],['revenue',12,'s']],a:['csv','payment','remit']},
+  purchasing:{b:[['deals',8,'m'],['schedule',4,'m'],['candidates',6,'m'],['loan',6,'m']],a:['addDeal','calc','loanSim']},
+  admin:{b:[['kpi',12,'s'],['staff',6,'m'],['audit',6,'m'],['arrears',6,'m'],['today',6,'m']],a:['log']}
+};
+var WIDTHS=[[4,'1/3'],[6,'1/2'],[8,'2/3'],[12,'全幅']];
+var HEIGHTS=[['s','小'],['m','中'],['l','大']];
+/* rental management only for now (the user's decision 2026-10-16: 仕入れ・管理者・経理 later) */
+var NAV=['ホーム','物件・台帳','入居者','契約・更新'];
+var PAGES={'ホーム':'index.html','物件・台帳':'properties.html','入居者':'tenants.html','契約・更新':'contracts.html',
+  '更新案内・退去の連絡':'contracts.html','物件の台帳':'properties.html','台帳を開く':'properties.html'};
+/* quick actions that live on other pages */
+var ACTION_PAGES={succession:'takeover.html',notice:'contracts.html',renewal:'contracts.html',turnover:'turnover.html',vacant:'properties.html'};
+function go(url){location.href=url}
+function runAction(k){
+  if(!actionOk(k))return;
+  if(k==='log')return openLog();
+  if(ACTION_PAGES[k])return go(ACTION_PAGES[k]);
+}
+
+/* ---------- state ---------- */
+var KEY='ganki-home-mock-v5:'; /* v5: 今日確認すること comes first; quick actions renamed */
+function def(role){var d=DEFAULTS[role];return {b:d.b.map(function(x){return {id:x[0],w:x[1],h:x[2],c:false}}),a:d.a.filter(function(k){return ACTIONS[k]})}}
+function valid(o){return o&&Array.isArray(o.b)&&Array.isArray(o.a)&&o.b.every(function(x){return x&&BLOCKS[x.id]})&&o.a.every(function(x){return ACTIONS[x]})}
+function load(role){try{var s=localStorage.getItem(KEY+role);if(s){var o=JSON.parse(s);if(valid(o))return addMoney(role,o)}}catch(e){}return def(role)}
+/* a layout saved before the 入出金の確認 block existed gets it once, after 今日確認すること / 空室 (the storage key stays v5;
+   a block the person hides later stays hidden: the flag below is set the first time) */
+function addMoney(role,o){
+  try{
+    var fk=KEY+'money-added:'+role;
+    if(localStorage.getItem(fk)==='1')return o;
+    localStorage.setItem(fk,'1');
+    if(!DEFAULTS[role]||!DEFAULTS[role].b.some(function(x){return x[0]==='money'})||o.b.some(function(x){return x.id==='money'}))return o;
+    var at=-1;o.b.forEach(function(x,i){if(x.id==='today'||x.id==='vacancy')at=i});
+    o.b.splice(at+1,0,{id:'money',w:12,h:'s',c:false});
+    localStorage.setItem(KEY+role,JSON.stringify(o));
+  }catch(e){}
+  return o;
+}
+function store(role,l){try{localStorage.setItem(KEY+role,JSON.stringify(l))}catch(e){}}
+var S={role:'rental',layout:null,editing:false,before:null,hist:[],confirmHide:null,drawer:false,addAction:false,tipClosed:false,dragId:null,dragChip:null,panel:null};
+try{S.tipClosed=localStorage.getItem(KEY+'tip')==='1'}catch(e){}
+S.layout=load(S.role);
+var phoneMQ=window.matchMedia('(max-width: 767px)');
+function isPhone(){return phoneMQ.matches}
+
+function push(){S.hist.push(JSON.stringify(S.layout));if(S.hist.length>60)S.hist.shift()}
+function dirty(){return S.before!==JSON.stringify(S.layout)}
+function say(t){var l=$('#live');l.textContent='';setTimeout(function(){l.textContent=t},30)}
+var toastT;
+var undoFn=null;
+function toast(t,undo,label){
+  var el=$('#toast');undoFn=undo||null;
+  el.innerHTML='<div class="toast" role="status"><span></span>'+(undo?'<button type="button" data-toastundo="1">'+(label||'元に戻す')+'</button>':'')+'</div>';
+  el.firstChild.firstChild.textContent=t;clearTimeout(toastT);
+  toastT=setTimeout(function(){el.innerHTML='';undoFn=null},undo?6000:2600);
+}
+function idx(id){for(var i=0;i<S.layout.b.length;i++)if(S.layout.b[i].id===id)return i;return -1}
+
+/* ---------- render ---------- */
+/* sidebar + 「メニュー」 topbar come from the shared GK.shell (built once: it also binds the menu button);
+   later renders only refresh the 契約・更新 badge */
+var shellBuilt=false;
+function renderNav(){
+  var rn=GK.renewalsDue().length,badge=rn?'<span class="badge" aria-label="要確認 '+rn+'件">'+rn+'</span>':'';
+  if(!shellBuilt){
+    shellBuilt=true;
+    if(typeof GK.shell==='function')GK.shell('index.html');
+    else{var sd=document.getElementById('side');if(sd)sd.innerHTML='<a class="logo" href="index.html"><span class="logo-mark">G</span>GANKI</a><nav class="nav" aria-label="メインメニュー"><div class="nav-label">賃貸管理</div>'+NAV.map(function(n,i){return '<a href="'+PAGES[n]+'"'+(i===0?' aria-current="page"':'')+'><span>'+n+'</span></a>'}).join('')+'</nav><div class="side-foot">'+GK.jp(T)+'<br>データはこのブラウザーだけに保存</div>'}
+  }
+  var a=document.querySelector('#side a[href="contracts.html"]');
+  if(a)a.innerHTML='<span>契約・更新</span>'+badge;
+}
+function closeNav(){
+  if(!document.body.classList.contains('nav-open'))return false;
+  document.body.classList.remove('nav-open');
+  var b=document.getElementById('navToggle');if(b){b.setAttribute('aria-expanded','false');b.focus()}
+  return true;
+}
+function renderRoles(){
+  $('#roles').innerHTML=Object.keys(ROLES).map(function(k){return '<button type="button" data-role="'+k+'" aria-pressed="'+(S.role===k)+'"'+(S.editing?' disabled title="編集を保存するかキャンセルしてから切り替えてください"':'')+'>'+ROLES[k].name+'</button>'}).join('');
+  $('#protoNote').textContent=S.editing?'編集中は役割を切り替えられません。保存するかキャンセルしてください。':ROLES[S.role].note;
+}
+function renderHead(){
+  $('#head').innerHTML='<div><h1>'+ROLES[S.role].home+'</h1><div class="date">'+T.slice(0,4)+'年'+jd(T)+'</div></div>'+
+    (S.editing?'':'<div class="head-actions">'+(S.tipClosed?'<button class="btn ghost" type="button" data-openhelp="1">使い方</button>':'')+(GK.can('in.palette')?'<button class="btn" type="button" id="openPal">'+ICON.search+'探す・移動 <kbd>Ctrl</kbd><kbd>K</kbd></button>':'')+(GK.jono&&GK.can('in.jono')?GK.jono.askBtn('head'):'')+(GK.can('act.layout')?'<button class="btn ghost" type="button" id="startEdit">'+ICON.edit+'並びを変える</button>':'')+'</div>');
+}
+function renderEditbar(){
+  var el=$('#editbar');
+  if(!S.editing){el.innerHTML='';return}
+  var hint=isPhone()?'↑↓で並べ替え、目のアイコンで非表示にできます。':'ブロックをドラッグして移動します。取っ手を選んで矢印キーでも動かせます（Shift＋←→で幅）。';
+  el.innerHTML='<div class="editbar" role="region" aria-label="配置の編集"><p><strong>並びを変えています</strong>　'+hint+'<br><span class="cap">カードの幅を変えると、中の並べ方も見やすい形に変わります（狭いと1列、広いと2〜3列）。「今日確認すること」と「管理の引継ぎ」は、高さで表示する件数も変わります。</span></p><div class="group">'+
+    '<button class="btn" type="button" id="openDrawer">'+ICON.plus+'ブロックを追加</button>'+
+    '<button class="btn" type="button" id="undo"'+(S.hist.length?'':' disabled')+'>元に戻す <kbd>Ctrl</kbd><kbd>Z</kbd></button>'+
+    '<button class="btn" type="button" id="reset">標準に戻す</button>'+
+    '<button class="btn ghost" type="button" id="cancel">キャンセル</button>'+
+    '<button class="btn primary" type="button" id="save">保存</button></div></div>';
+}
+function greet(){
+  if(S.role!=='rental'||S.editing)return '';
+  var mine=todayTasks().filter(function(x){return x.who===ME}),over=mine.filter(function(x){return kindOf(x)==='over'}).sort(cmpDue);
+  var today=mine.filter(function(x){return x.due===T}).sort(cmpDue);
+  var first=over[0]||today[0]||mine.slice().sort(cmpDue)[0];
+  var hr=new Date().getHours(),hi=hr<11?'おはようございます':hr<17?'おつかれさまです':'今日もおつかれさまです';
+  if(!mine.length)return '<div class="greet"><p>'+hi+'、'+ME+'さん。自分の担当の対応はすべて終わっています。</p></div>';
+  return '<div class="greet"><p>'+hi+'、'+ME+'さん。自分の担当は <b>'+mine.length+'件</b>'+(over.length?'（期限超過 <b class="red">'+over.length+'件</b>）':'')+(today.length?'、今日（'+GK.sd(T)+'）の予定は '+today.map(function(x){var tm=taskTime(x);return (tm?tm+' ':'')+esc(x.t)}).join('・'):'')+'です。'+(first?'まずは「'+esc(first.t)+'」（'+esc(rl(first.unit))+'）からがおすすめです。':'')+'</p>'+(first&&ROOMS[first.unit]?'<button class="btn primary" type="button" data-room="'+esc(first.unit)+'">ここから始める</button>':'')+'</div>';
+}
+function renderTip(){
+  var el=$('#tip');
+  if(S.tipClosed||S.editing){el.innerHTML=greet();return}
+  el.innerHTML=greet()+'<div class="tip one"><p><b>はじめての方へ：</b>この画面でできること</p><span class="group"><button class="btn" type="button" data-openhelp="1">使い方を見る</button><button class="btn ghost" type="button" id="closeTip">閉じる</button></span></div>';
+}
+/* help text + keyboard shortcuts in one panel (opened from the tip, the 「使い方」 button or the ? key) */
+function helpBody(){
+  /* 機能の設定: only what this person can use is explained */
+  var c=function(k){return GK.can(k)},li=function(on,t){return on?'<li>'+t+'</li>':''},kb=function(on,k,t){return on?'<dt>'+k+'</dt><dd>'+t+'</dd>':''};
+  return '<div><h3>この画面でできること</h3><ul class="help-list">'+
+    li(c('home.today')&&(c('act.done')||c('act.later')||c('act.record')||c('act.resched')),'「今日確認すること」で、その場で「完了」「明日へ」「記録」ができます。時間の決まった予定（退去立会い・内見など）は「日程を変える」で日付と時刻を変えます。押した結果はほかのページ（物件・台帳、契約・更新など）にも反映されます。')+
+    '<li>部屋名を押すと、一覧の横に入居者・契約・未収・対応履歴・前の入居者を表示します。「次の部屋」で順に見られます。</li>'+
+    li(c('home.today')&&c('money.dunning'),'家賃の未収は「今日確認すること」に、段階（1回目・2回目の連絡、保証会社への請求。保証会社がない契約は、連帯保証人への連絡・オーナーへの報告・督促状）ごとに1件ずつ出ます。'+(c('act.dunning')?'「済み」を押すと次の段階に進みます。':'')+'入出金で入金を確認すると自動で終わります。「滞納」を押すと滞納だけを表示します。')+
+    li(c('act.record'),'電話メモは、ひな形（よくある内容の書き出し）から記録して、次の対応も一緒に登録できます。')+
+    li(c('act.call'),'『電話する』で電話をかけると、対応履歴に自動で残ります。切ったあとに内容をひとことで記録できます。')+
+    li(c('home.handover'),'管理の引継ぎ（ほかの会社から管理を受け継ぐ作業）は、「＋ 新しい引継ぎを始める」から5つの手順で進めます。途中の物件は「続きから」で再開できます。')+
+    li((c('home.renewals')&&c('act.renew'))||(c('home.moveout')&&c('act.mocheck'))||(c('home.notes')&&c('act.memo')),'契約更新の案内をまとめて作成／退去のやることチェック／共有メモ（チェックとメモはこのブラウザーに保存されます）。')+
+    li(c('home.today')||c('home.week'),'「自分の担当だけ」の切り替え、今週の予定を日付ごとに表示。')+
+    li(c('in.msg'),'部屋の画面から、督促や更新案内などの文面をコピーできます（名前・金額は自動で入ります）。関係先の電話番号もコピーできます。')+
+    '<li>完了や削除は、下に出る「元に戻す」でやり直せます。</li>'+
+    li(c('act.layout'),'「並びを変える」で、ブロック（画面のまとまり）の順番や大きさを変えられます。')+
+    '</ul></div>'+
+    '<div><h3>キーボードの近道（ショートカット）</h3><dl class="keys">'+kb(c('act.record'),'<kbd>N</kbd>','対応を記録する')+kb(c('home.search'),'<kbd>/</kbd>','台帳の検索欄へ移動')+kb(c('in.palette'),'<kbd>Ctrl</kbd>+<kbd>K</kbd>','部屋・操作・ブロックを探して移動')+kb(c('home.today'),'<kbd>M</kbd>','「自分の担当だけ」と「全員」を切り替え')+'<dt><kbd>↑</kbd><kbd>↓</kbd></dt><dd>部屋の画面を開いているとき、「前の部屋・次の部屋」ボタンか今日の一覧の中で押すと部屋を移動</dd><dt><kbd>Esc</kbd></dt><dd>開いている画面を閉じる</dd><dt><kbd>?</kbd></dt><dd>この使い方を表示</dd>'+kb(c('act.layout'),'<kbd>Ctrl</kbd>+<kbd>Z</kbd>','並びを変えているときに1つ前に戻す')+'</dl><p class="notice">入力欄に文字を入れているときは、N・/・M・? は文字として入力されます。</p></div>';
+}
+function openHelp(){S.panel={type:'help',ret:document.activeElement};renderPanel()}
+function renderQuick(){
+  var q=$('#quick');q.classList.toggle('editing',S.editing);
+  if(!GK.can('home.quick')){q.innerHTML='';return}
+  var h='<span class="quick-label">よく使う操作</span>';
+  h+=S.layout.a.filter(actionOk).map(function(id){
+    return S.editing
+      ?'<span class="chip" draggable="'+(!isPhone())+'" data-chip="'+id+'">'+ACTIONS[id]+'<button class="x" type="button" data-rmchip="'+id+'" aria-label="「'+ACTIONS[id]+'」を外す">'+ICON.x+'</button></span>'
+      :'<button class="chip" type="button" data-qa="'+id+'">'+ACTIONS[id]+'</button>';
+  }).join('');
+  if(!S.layout.a.length&&!S.editing)h+='<span class="sample-note">「並びを変える」から追加できます。</span>';
+  if(S.editing){
+    var rest=Object.keys(ACTIONS).filter(function(k){return S.layout.a.indexOf(k)<0&&actionOk(k)});
+    h+='<span class="pop-wrap"><button class="chip add" type="button" id="addChip" aria-expanded="'+S.addAction+'">＋ 操作を追加</button>'+
+      (S.addAction?'<div class="pop" role="menu">'+(rest.length?rest.map(function(k){return '<button type="button" role="menuitem" data-addchip="'+k+'">'+ACTIONS[k]+'</button>'}).join(''):'<div class="empty">すべて追加済みです</div>')+'</div>':'')+'</span>';
+  }
+  if(!S.editing&&D.recent.length)h+='<div class="recent"><span>最近見た部屋</span>'+D.recent.filter(function(k){return ROOMS[k]}).map(function(k){return '<button class="chip" type="button" data-room="'+esc(k)+'">'+esc(rl(k))+'</button>'}).join('')+'</div>';
+  q.innerHTML=h;
+}
+function seg(kind,id,list,cur){
+  return '<span class="mini" role="group" aria-label="'+(kind==='w'?'幅':'高さ')+'">'+list.map(function(x){return '<button type="button" data-'+kind+'="'+x[0]+'" data-for="'+id+'" aria-pressed="'+(x[0]===cur)+'">'+x[1]+'</button>'}).join('')+'</span>';
+}
+function renderBoard(){
+  var b=$('#board');b.classList.toggle('editing-board',S.editing);
+  var phone=isPhone(),vis=shownBlocks(),n=vis.length;
+  if(!n){b.innerHTML='<div class="block" style="--w:12"><div class="block-body" style="opacity:1;pointer-events:auto;padding:24px 14px"><b>表示するブロックがありません。</b><p class="sample-note">'+(S.editing?'「ブロックを追加」から選んでください。':'「並びを変える」から追加するか、「標準に戻す」で最初の配置に戻せます。')+'</p></div></div>';return}
+  b.innerHTML=vis.map(function(it,i){
+    var B=BLOCKS[it.id];
+    var tools='';
+    if(S.editing){
+      tools='<div class="tools">'+
+        (phone?'':'<button class="handle" type="button" data-handle="'+it.id+'" aria-label="「'+B.t+'」を移動。矢印キーで並べ替え、Shift＋左右で幅を変更">'+ICON.grip+'</button>')+
+        (phone?'':'<span class="mini-label">幅</span>'+seg('w',it.id,WIDTHS,it.w)+'<span class="mini-label">高さ</span>'+seg('h',it.id,HEIGHTS,it.h))+
+        '<span class="spacer"></span>'+
+        '<button class="icon-btn" type="button" data-move="-1" data-for="'+it.id+'" aria-label="前へ"'+(i===0?' disabled':'')+'>'+ICON.up+'</button>'+
+        '<button class="icon-btn" type="button" data-move="1" data-for="'+it.id+'" aria-label="後ろへ"'+(i===n-1?' disabled':'')+'>'+ICON.down+'</button>'+
+        '<button class="icon-btn" type="button" data-hide="'+it.id+'" aria-label="「'+B.t+'」を非表示">'+ICON.eyeOff+'</button></div>';
+      if(S.confirmHide===it.id)tools+='<div class="confirm" role="alert"><p>「'+B.t+'」は毎日の確認に使うブロックです。非表示にしますか？「ブロックを追加」からいつでも戻せます。</p><button class="btn danger" type="button" data-hideok="'+it.id+'">非表示にする</button><button class="btn" type="button" data-hideno="1">やめる</button></div>';
+    }
+    var collapsed=phone&&it.c;
+    return '<section class="block'+(collapsed?' collapsed':'')+'" id="blk-'+it.id+'" data-id="'+it.id+'" data-h="'+it.h+'" style="--w:'+it.w+'"'+(S.editing&&!phone?' draggable="true"':'')+' aria-label="'+B.t+'">'+
+      '<div class="block-head"><h2>'+B.t+'</h2>'+(B.meta?'<span class="meta">'+(typeof B.meta==='function'?B.meta():B.meta)+'</span>':'')+
+      '<button class="collapse" type="button" data-collapse="'+it.id+'" aria-expanded="'+!collapsed+'" aria-label="「'+B.t+'」を'+(collapsed?'開く':'たたむ')+'" style="transform:rotate('+(collapsed?'-90':'0')+'deg)">'+ICON.chev+'</button></div>'+
+      tools+'<div class="block-body">'+B.r()+'</div></section>';
+  }).join('');
+}
+function renderDrawer(){
+  var el=$('#drawer');
+  if(!S.drawer){el.innerHTML='';return}
+  var shown=S.layout.b.map(function(x){return x.id});
+  var rest=Object.keys(BLOCKS).filter(function(k){return shown.indexOf(k)<0});
+  var rec=rest.filter(function(k){return BLOCKS[k].roles.indexOf(S.role)>=0&&blockOk(k)});
+  var oth=rest.filter(function(k){return BLOCKS[k].roles.indexOf(S.role)<0});
+  function list(ks){return ks.length?'<div class="cat">'+ks.map(function(k){var B=BLOCKS[k];return '<div class="cat-item"><div><b>'+B.t+'</b><span>'+B.d+'</span></div><button class="btn" type="button" data-add="'+k+'">追加</button></div>'}).join('')+'</div>':'<p class="sample-note">追加できるブロックはありません。</p>'}
+  el.innerHTML='<div class="scrim" data-closedrawer="1"></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle"><div class="drawer-head"><h2 id="drawerTitle">ブロックを追加</h2><button class="btn ghost" type="button" data-closedrawer="1">閉じる</button></div><div class="drawer-body">'+
+    '<div><h3>'+ROLES[S.role].name+'のブロック</h3>'+list(rec)+'</div></div></aside>';void oth;
+  var f=el.querySelector('[data-add]')||el.querySelector('.btn[data-closedrawer]');if(f)f.focus();
+}
+function markOpen(){
+  var r=S.panel&&S.panel.type==='room'?S.panel.room:'';
+  document.querySelectorAll('#board li.is-open').forEach(function(li){li.classList.remove('is-open')});
+  if(!r)return;
+  var rq=window.CSS&&CSS.escape?CSS.escape(r):String(r).replace(/["\\]/g,'\\$&');
+  document.querySelectorAll('#board [data-room="'+rq+'"]').forEach(function(b){var li=b.closest('li');if(li)li.classList.add('is-open')});
+}
+function roomOrder(){var o=[];todayItems().forEach(function(x){if(ROOMS[x.unit]&&o.indexOf(x.unit)<0)o.push(x.unit)});return o}
+function nextRoom(){var p=S.panel;if(!p||!p.order)return '';var i=p.order.indexOf(p.room);return i>=0&&i<p.order.length-1?p.order[i+1]:''}
+function moveRoom(step){
+  var p=S.panel;if(!p||p.type!=='room'||!p.order)return;
+  var i=p.order.indexOf(p.room)+step;if(i<0||i>=p.order.length)return;
+  openRoom(p.order[i],true);
+  var b=document.querySelector('#board li.is-open');if(b)b.scrollIntoView({block:'nearest'});
+  var f=document.querySelector('[data-roomnav="'+step+'"]:not([disabled])')||document.querySelector('[data-roomnav]:not([disabled])');if(f)f.focus();
+  say(ROOMS[p.order[i]].p+' '+ROOMS[p.order[i]].n+' を表示しています');
+}
+function tenantHistory(k){
+  var past=PAST[k]||[],nx=NEXT[k],R=ROOMS[k];
+  var h='<div><h3>入居者の移り変わり</h3><ul class="rows">';
+  if(nx)h+='<li><span class="pill info">新入居者</span><span class="main-t">'+esc(nx.n||'未定')+'<div class="sub">'+esc(nx.t+' · '+nx.st)+'</div></span></li>';
+  h+='<li><span class="pill ok">今の入居者</span><span class="main-t">'+esc(R.ten||'空室')+'<div class="sub">'+esc(R.term)+'</div></span></li>';
+  h+=past.map(function(x,i){return '<li><span class="pill mute">旧入居者'+(past.length>1?' '+(i+1):'')+'</span><span class="main-t">'+esc(x.n)+'<div class="sub">'+esc(x.t+' · '+x.why)+'</div>'+(x.set?'<div class="sub">'+esc(x.set)+'</div>':'')+'</span><span class="end"><button class="act" type="button" data-go="'+esc(x.lid?'contracts.html#lease-'+x.lid:'contracts.html#room-'+k)+'" aria-label="'+esc(x.n)+'の契約と対応履歴を「契約・更新」で開く">契約と履歴</button></span></li>'}).join('');
+  if(!past.length)h+='<li><span class="main-t"><span class="cap">この部屋の前の入居者は記録がありません。</span></span></li>';
+  return h+'</ul><p class="cap" style="margin-top:4px">入れ替わっても前の契約は消さずに残ります。旧入居者の電話番号は表示しません。</p></div>';
+}
+function renderPanel(noFocus){
+  var el=$('#panel'),p=S.panel;
+  if(!p){el.innerHTML='';document.body.classList.remove('panel-side');markOpen();return}
+  var body='',title='';
+  if(p.type==='room'&&!ROOMS[p.room]){
+    /* the open room is gone (removed by a save in another tab): close the panel instead of failing */
+    S.panel=null;el.innerHTML='';document.body.classList.remove('panel-side');markOpen();
+    toast('開いていた部屋の情報が見つからないため、部屋の画面を閉じました');
+    var rf=p.ret;if(rf&&document.body.contains(rf)&&rf.focus)rf.focus();
+    return;
+  }
+  if(p.type==='room'){
+    var R=ROOMS[p.room];title=esc(R.p+' '+R.n);
+    /* 「電話する」 works without revealing: the number is looked up on press (ref), and the call itself is logged */
+    var callT=R.tel?tenantCall(p.room):'';
+    var tel=R.tel?(D.shown[p.room]?'<span class="tel"><b>'+esc(R.tel)+'</b>'+callT+'<span class="cap">'+esc(D.shown[p.room])+' に表示</span></span>':'<span class="tel">'+esc(GK.mask(R.tel))+(GK.can('pi.tel')?'<button class="act" type="button" data-reveal="'+esc(p.room)+'">番号を表示</button>':'')+callT+'</span>'):'—';
+    var his=allHist().filter(function(x){return x.room===p.room});
+    var tk=openTasks().concat(dunRows()).filter(function(x){return x.unit===p.room}).sort(cmpDue);
+    var sub=[esc(code(p.room)),R.lay?esc(R.lay):'間取り 未登録',R.area?esc(R.area)+'㎡':'広さ 未登録',R.rent>0?'家賃 '+GK.yen(R.rent):'家賃 未登録'].join(' · ');
+    body='<div><div class="room-sub">'+sub+'　<button class="link" style="margin:0" type="button" data-prop="'+esc(R.p)+'">'+esc(R.p)+'の詳細を見る →</button></div></div>'+
+      '<div><h3>入居者・契約</h3><dl class="kv"><dt>今の入居者</dt><dd>'+esc(R.ten||'空室')+'</dd><dt>電話</dt><dd>'+tel+'</dd><dt>保証会社</dt><dd>'+esc(R.gua)+'</dd><dt>契約</dt><dd>'+esc(R.term)+'</dd><dt>未収</dt><dd>'+(R.ar?'<span class="pill danger">'+esc(R.ar)+'</span>':'<span class="pill ok">なし</span>')+'</dd></dl>'+
+      (R.tel&&GK.can('pi.tel')?'<p class="notice">電話番号は必要なときだけ表示します。表示すると操作ログに記録が残ります。'+(GK.can('act.call')?'「電話する」は番号を表示しなくても使えます（電話したことは対応履歴に残ります）。':'')+'</p>':'')+'</div>'+
+      (function(){
+        /* owner of this building, from the same store as 物件・台帳; phone masked and bank number shortened, as there */
+        var P=PROPS[R.p],pr=P&&GK.prop(P.code),o=pr&&GK.owner(pr.owner);if(!o)return '';
+        return '<div><h3>オーナー</h3><dl class="kv"><dt>名前</dt><dd>'+esc(o.n)+' 様</dd>'+
+          '<dt>電話</dt><dd>'+ownerTelHtml(o,p.room)+'</dd>'+
+          (o.mail?'<dt>メール</dt><dd>'+esc(o.mail)+'</dd>':'')+
+          '<dt>管理開始</dt><dd>'+esc(P.since||'未登録')+'</dd>'+
+          (GK.can('pi.owner')?'<dt>送金口座</dt><dd>'+(o.bank?esc(maskBank(o.bank)):'未登録')+'</dd>':'')+
+          (o.fee?'<dt>管理手数料</dt><dd>家賃の '+esc(o.fee)+'%</dd>':'')+
+          '</dl>'+(o.tel&&GK.can('pi.owner')?'<p class="notice">オーナーの電話番号も、表示すると操作ログに記録が残ります。</p>':'')+'</div>';
+      })()+
+      '<div><h3>この部屋のやること</h3>'+(tk.length?'<ul class="rows">'+tk.map(function(x){
+        if(x.dun)return '<li><span class="main-t">'+esc(x.t)+'<div class="sub">滞納の段階'+(x.who?' · 担当 '+(x.who===ME?'自分':esc(x.who)):'')+(x.dun.warn?' · <span class="pill '+(x.dun.warn==='over'?'danger':'warn')+'">'+esc(GK.dun.warnText(x.dun))+'</span>':'')+'</div></span><span class="end">'+esc(dueText(x))+(GK.can('act.dunning')?' <button class="act ok" type="button" data-dundone="'+esc(x.dun.lease)+'" data-step="'+x.dun.step+'" aria-label="「'+esc(x.t)+'」を済みにする">済み</button>':'')+'</span></li>';
+        return '<li><span class="main-t">'+esc(x.t)+'<div class="sub">'+meOnly(x)+'担当 '+(x.who===ME?'自分':esc(x.who))+'</div></span><span class="end">'+esc(dueText(x))+(GK.can('act.done')?' <button class="act ok" type="button" data-done="'+esc(x.id)+'" aria-label="「'+esc(x.t)+'」を完了">完了</button>':'')+'</span></li>'}).join('')+'</ul>':(nextRoom()?'<div class="done-next"><span>この部屋のやることは終わりました。</span><button class="btn primary" type="button" data-roomnav="1">次の部屋へ ›</button></div>':'<p class="sample-note">予定されている対応はありません。</p>'))+'</div>'+
+      tenantHistory(p.room)+
+      '<div><h3>対応履歴</h3>'+(his.length?'<ul class="rows">'+his.map(function(x){return '<li>'+when(esc(x.w))+'<span class="main-t">'+callMark(x.t)+esc(x.t)+'<div class="sub">'+esc(x.who)+'</div></span></li>'}).join(''):'<p class="sample-note">まだ記録がありません。</p>')+(his.length?'</ul>':'')+'</div>'+
+      (function(){
+        var mts=msgTypes(p.room);if(!mts.length||!GK.can('in.msg'))return '';
+        var cur=D.msg[p.room]&&mts.indexOf(D.msg[p.room])>=0?D.msg[p.room]:mts[0];
+        return '<div><h3>入居者への文面</h3><div class="msg-tabs" role="group" aria-label="文面の種類">'+mts.map(function(m){return '<button class="act" type="button" data-msg="'+m+'" aria-pressed="'+(m===cur)+'">'+m+'</button>'}).join('')+'</div>'+
+          '<textarea class="msg" id="msg-text" aria-label="文面（編集できます）">'+esc(msgText(p.room,cur))+'</textarea><div class="panel-actions" style="margin-top:6px"><button class="btn" type="button" data-copy="1">文面をコピー</button><span class="cap" style="align-self:center">名前・金額・期限は自動で入ります。送る前に直せます。</span></div>'+
+          /* AIで下書き (2026-10-19): 種類・言い方を選ぶと、この部屋の名前・日付・金額で下書きを作る（確かめてからコピー・文面の欄へ） */
+          (GK.ai&&GK.can('ai.write')?'<div class="ai-row" style="margin-top:8px">'+GK.ai.draftBtn({host:'msg-ai',unit:p.room,into:'msg-text',purpose:{'督促':'督促','更新の案内':'更新案内','点検のお知らせ':'点検','修理日程の連絡':'修理日程'}[cur]||''})+'</div><div id="msg-ai" style="margin-top:8px"></div>':'')+'</div>';
+      })()+
+      '<div><h3>関係先の連絡先</h3><ul class="rows contacts">'+
+        (R.gua&&R.gua.indexOf('あり')===0?(function(){var g=R.gua.replace(/^あり（|）$/g,'');return contactRow(['保証会社',g,Object.prototype.hasOwnProperty.call(GUA_TEL,g)?GUA_TEL[g]:''],p.room)})():'')+
+        contactsOf(R.p).map(function(c){return contactRow(c,p.room)}).join('')+
+      '</ul></div>'+
+      gateGo('<div class="panel-actions">'+(GK.can('act.record')?'<button class="btn primary" type="button" data-log="'+esc(p.room)+'">対応を記録</button>':'')+'<button class="btn" type="button" data-go="'+esc('contracts.html#room-'+p.room)+'">更新案内・退去の連絡</button><button class="btn" type="button" data-go="'+esc('properties.html#room-'+p.room)+'">台帳を開く</button></div>');
+    body=gateGo(body);
+  }else if(p.type==='prop'){
+    title=esc(p.prop);body=propBody(p.prop);
+  }else if(p.type==='help'){
+    title='使い方';
+    body=helpBody();
+  }else{
+    title='対応を記録';
+    var task=p.task?taskBy(p.task):null;if(task&&GK.taskVisible&&!GK.taskVisible(task))task=null;
+    /* a to-do without a room can be recorded as 部屋なし; a private to-do's text is not copied into the shared record */
+    var noRoom=!!(task&&!task.unit),pvT=!!(task&&task.private);
+    var TPL=[['水漏れ','水漏れの連絡。場所：　業者手配：'],['鍵の紛失','鍵の紛失の連絡。シリンダー交換の要否を確認。'],['騒音の苦情','騒音の苦情。時間帯：　発生元の部屋：'],['更新の意思確認','更新の意思確認。回答：'],['入金の確認','家賃の入金について連絡。入金予定日：']];
+    var DUE=[[rel(1),'明日 · '+GK.sdw(rel(1))],[rel(3),'3日後 · '+GK.sdw(rel(3))],[rel(7),'1週間後 · '+GK.sdw(rel(7))]];
+    body='<form id="log-form" class="panel-body" style="padding:0" novalidate>'+
+      '<div class="field"><label for="lf-room">物件・部屋<span class="req">必須</span></label><div class="room-pick"><select id="lf-room" aria-describedby="lf-room-err lf-ten" required><option value="">部屋を選んでください</option>'+(noRoom?'<option value="-"'+(p.room?'':' selected')+'>部屋なし</option>':'')+
+        GK.db.props.map(function(pr){return '<optgroup label="'+esc(pr.n)+'">'+GK.db.units.filter(function(u){return u.prop===pr.id}).map(function(u){return '<option value="'+esc(u.id)+'"'+(u.id===p.room?' selected':'')+'>'+esc(pr.n+' '+u.no)+'</option>'}).join('')+'</optgroup>'}).join('')+
+        '</select><span class="cap" id="lf-ten">'+lfTen(p.room)+'</span></div><p class="err" id="lf-room-err" hidden>部屋を選んでください。</p></div>'+
+      '<div class="field"><label for="lf-kind">種類</label><select id="lf-kind"><option>電話（受信）</option><option>電話（発信）</option><option>来店</option><option>メール</option><option>訪問</option></select></div>'+
+      '<div class="field"><label for="lf-text">内容<span class="req">必須</span></label><div class="tpls" role="group" aria-label="ひな形（よくある内容の書き出し）">'+TPL.map(function(t){return '<button class="act" type="button" data-tpl="'+esc(t[1])+'">'+t[0]+'</button>'}).join('')+'</div><textarea id="lf-text" rows="3" required aria-describedby="lf-err" placeholder="例：水漏れの連絡。明日10時に業者が訪問。">'+(task&&!pvT?esc(task.t)+'について：':'')+'</textarea><p class="err" id="lf-err" hidden>内容を入力してください。</p>'+(pvT?'<p class="cap" id="lf-pvnote">自分だけのやることです。記録は対応履歴に残り、ほかの人にも見えます（やることの内容は自動では入れていません）。</p>':'')+
+        /* AIの提案 (2026-10-19): the memo + 種類 -> a clear record sentence, shown with 使う／やめる (GK.ai in ganki-data.js) */
+        (GK.ai&&GK.can('ai.write')?'<div class="ai-row" style="margin-top:6px">'+GK.ai.writeBtn({host:'lf-ai',into:'lf-text',kind:'lf-kind'})+'</div><div id="lf-ai" style="margin-top:6px"></div>':'')+'</div>'+
+      '<div class="field"><label for="lf-next">次の対応（任意）</label><input id="lf-next" type="text" placeholder="例：業者の訪問結果を確認" autocomplete="off"></div>'+
+      '<div class="field"><label for="lf-due">次の対応の期限</label><select id="lf-due">'+DUE.map(function(x){return '<option value="'+x[0]+'">'+x[1]+'</option>'}).join('')+'</select></div>'+
+      (task?'<label class="chk"><input type="checkbox" id="lf-done" checked>「'+esc(task.t)+'」を完了にする</label>':'')+
+      '<div class="panel-actions"><button class="btn primary" type="submit">記録する</button><button class="btn" type="button" data-closepanel="1">キャンセル</button></div></form>';
+  }
+  var side=p.type==='room'&&window.innerWidth>1180;
+  document.body.classList.toggle('panel-side',side);
+  var nav='';
+  var ix=p.type==='room'&&p.order?p.order.indexOf(p.room):-1;
+  if(ix>=0&&p.order.length>1){
+    nav='<div class="room-nav"><button class="act" type="button" data-roomnav="-1"'+(ix<=0?' disabled':'')+'>‹ 前の部屋</button><span class="pos">今日確認することの '+(ix+1)+' / '+p.order.length+' 部屋<span class="cap">（↑↓ でも移動）</span></span><button class="act" type="button" data-roomnav="1"'+(ix>=p.order.length-1?' disabled':'')+'>次の部屋 ›</button></div>';
+  }
+  el.innerHTML=(side?'':'<div class="scrim" data-closepanel="1"></div>')+'<aside class="drawer'+(side?' side-panel':'')+'" '+(side?'role="complementary" aria-label="部屋の詳細"':'role="dialog" aria-modal="true" aria-labelledby="panelTitle"')+'><div class="drawer-head"><h2 id="panelTitle">'+title+'</h2><button class="btn ghost" type="button" data-closepanel="1">閉じる</button></div>'+nav+'<div class="panel-body">'+body+'</div></aside>';
+  markOpen();
+  var f=noFocus?null:p.type==='log'?$('#lf-text'):el.querySelector('.drawer-head .btn');
+  if(f){f.focus();if(f.tagName==='TEXTAREA')f.setSelectionRange(f.value.length,f.value.length)}
+}
+function copyRow(label,val){return '<li><span class="main-t">'+esc(label)+'</span><span class="end">'+(val?esc(val)+' <button class="act" type="button" data-copytel="'+esc(val)+'">コピー</button>':'<span class="cap">未登録</span>')+'</span></li>'}
+function propBody(name){
+  var P=PROPS[name];
+  if(P){
+    var rooms=Object.keys(ROOMS).filter(function(k){return ROOMS[k].p===name});
+    var tk=openTasks().filter(function(x){return ROOMS[x.unit]&&ROOMS[x.unit].p===name}).sort(cmpDue);
+    var ar=rooms.filter(function(k){return ROOMS[k].ar}),vac=rooms.filter(function(k){return !ROOMS[k].ten});
+    var ren=renList().filter(function(r){return ROOMS[r.room]&&ROOMS[r.room].p===name});
+    var own=P.ownerId?GK.owner(P.ownerId):null;
+    var his=allHist().filter(function(x){return ROOMS[x.room]&&ROOMS[x.room].p===name}).slice(0,4);
+    var report=P.owner+'\n\nいつもお世話になっております。GANKI 賃貸管理部の'+ME+'です。\n'+name+'の'+(+T.slice(5,7))+'月の状況をご報告します。\n\n・入居：'+(P.units-vac.length)+' / '+P.units+'室'+(vac.length?'（空室 '+vac.map(function(k){return ROOMS[k].n}).join('・')+'号室）':'')+'\n・未収：'+(ar.length?ar.map(function(k){return ROOMS[k].n+'号室 '+ROOMS[k].ar}).join('、'):'なし')+'\n'+(his.length?'・主な対応：\n'+his.map(function(x){return '　'+ROOMS[x.room].n+'号室　'+x.t.replace(/^[^：]+：/,'')}).join('\n')+'\n':'')+(ren.length?'・契約更新の予定：'+ren.map(function(r){return ROOMS[r.room].n+'号室（'+GK.sd(r.end)+' 満了・'+r.st+'）'}).join('、')+'\n':'')+'\nご不明な点がございましたら、お気軽にお問い合わせください。';
+    return '<div class="room-sub">'+esc(P.code)+' · '+esc(P.type||'構造 未登録')+'</div>'+
+      '<div class="stats"><div class="stat"><div class="k">入居</div><div class="v">'+(P.units-vac.length)+'<small>/ '+P.units+'室</small></div></div><div class="stat'+(ar.length?' danger':'')+'"><div class="k">未収</div><div class="v">'+ar.length+'<small>件</small></div></div><div class="stat'+(tk.length?' info':'')+'"><div class="k">やること</div><div class="v">'+tk.length+'<small>件</small></div></div></div>'+
+      '<div><h3>基本情報</h3><ul class="rows contacts">'+copyRow('住所',P.addr)+'<li><span class="main-t">オーナー</span><span class="end">'+esc(P.owner||'未登録')+(own&&own.tel?'　'+ownerTelHtml(own):'')+'</span></li><li><span class="main-t">管理開始</span><span class="end">'+esc(P.since||'未登録')+'</span></li></ul></div>'+
+      '<div><h3>部屋（'+rooms.length+'室）</h3><ul class="rows">'+rooms.map(function(k){var R=ROOMS[k];return '<li><button type="button" class="rowbtn" data-room="'+esc(k)+'"><span class="t1">'+esc(R.n)+'号室　'+esc(R.ten||'空室')+'</span><div class="sub">'+esc(R.lay||'間取り 未登録')+' · '+(R.rent>0?GK.yen(R.rent):'家賃 未登録')+'</div></button>'+(R.ar?'<span class="pill danger">未収</span>':!R.ten?'<span class="pill warn">空室</span>':/退去/.test(R.term)?'<span class="pill warn">退去予定</span>':'')+'</li>'}).join('')+'</ul></div>'+
+      '<div><h3>この物件のやること</h3>'+(tk.length?'<ul class="rows">'+tk.map(function(x){return '<li><span class="main-t">'+esc(x.t)+'<div class="sub">'+esc(ROOMS[x.unit].n)+'号室 · 担当 '+(x.who===ME?'自分':esc(x.who))+'</div></span><span class="end">'+esc(dueText(x))+(GK.can('act.done')?' <button class="act ok" type="button" data-done="'+esc(x.id)+'" aria-label="「'+esc(x.t)+'」を完了">完了</button>':'')+'</span></li>'}).join('')+'</ul>':'<p class="sample-note">予定されている対応はありません。</p>')+'</div>'+
+      (!GK.can('in.msg')?'':'<div><h3>オーナーへの月次報告（下書き）</h3><textarea class="msg" id="msg-text" aria-label="オーナー報告の文面（編集できます）">'+esc(report)+'</textarea><div class="panel-actions" style="margin-top:6px"><button class="btn" type="button" data-copy="1">文面をコピー</button><span class="cap" style="align-self:center">入居・未収・対応履歴・更新予定から自動で作っています。</span></div></div>')+
+      '<div><h3>関係先の連絡先</h3>'+(contactsOf(name).length?'<ul class="rows contacts">'+contactsOf(name).map(function(c){return contactRow(c)}).join('')+'</ul>':'<p class="sample-note">登録されている関係先はありません。</p>')+'</div>'+
+      gateGo('<div class="panel-actions">'+(rooms.length&&GK.can('act.record')?'<button class="btn primary" type="button" data-log="'+esc(rooms.filter(function(k){return ROOMS[k].ten})[0]||rooms[0])+'">対応を記録</button>':'')+'<button class="btn" type="button" data-go="properties.html">台帳を開く</button></div>');
+  }
+  return '<p class="sample-note">この物件の情報はありません。</p>';
+}
+function openProp(name){S.panel={type:'prop',prop:name,ret:document.activeElement};renderPanel()}
+function openRoom(k,keepOrder){
+  if(!ROOMS[k])return;
+  D.recent=[k].concat(D.recent.filter(function(x){return x!==k})).slice(0,5);
+  var prev=S.panel&&S.panel.type==='room'?S.panel:null;
+  var order=keepOrder&&prev?prev.order:roomOrder();
+  S.panel={type:'room',room:k,order:order,ret:prev?prev.ret:document.activeElement};renderQuick();renderPanel();
+}
+function lfTen(k){var R=k&&ROOMS[k];return R?(R.ten?'入居者：'+esc(R.ten):'空室'):''}
+function openLog(room,task){
+  if(!GK.can('act.record'))return;
+  /* default to the room that is open in the side panel; never guess an unrelated room */
+  var cur=S.panel&&S.panel.type==='room'?S.panel.room:'';
+  var r=S.panel&&S.panel.ret;S.panel={type:'log',room:room||cur||'',task:task||null,ret:r||document.activeElement};renderPanel();
+  S.panel.pre=$('#lf-text').value;
+  var dr=D.draft;
+  if(dr&&(!room||dr.room===room)){
+    S.panel.task=dr.task;$('#lf-room').value=dr.room;$('#lf-ten').innerHTML=lfTen(dr.room);$('#lf-kind').value=dr.kind;$('#lf-text').value=dr.text;$('#lf-next').value=dr.next;$('#lf-due').value=dr.due;
+    toast('書きかけの記録の続きから開きました',function(){D.draft=null},'破棄して新しく書く');
+  }
+}
+function closePanel(){
+  var p=S.panel,r=p&&p.ret;
+  if(p&&p.type==='log'&&!p.sent){
+    var tx=$('#lf-text').value;
+    if(tx.trim()&&tx!==p.pre){D.draft={room:$('#lf-room').value,kind:$('#lf-kind').value,text:tx,next:$('#lf-next').value,due:$('#lf-due').value,task:p.task};toast('書きかけの記録を残しました。次に開くと続きから書けます')}
+  }
+  S.panel=null;renderPanel();if(r&&document.body.contains(r))r.focus();
+}
+function refocus(id){var el=document.getElementById(id);if(el)el.focus()}
+function refocusSel(sel){var el=document.querySelector(sel);if(el)el.focus()}
+function cancelResched(){var id=D.resched;D.resched=null;updToday();if(id)refocusSel('[data-resched="'+id+'"]')}
+function render(){buildData();buildMo();renderNav();renderRoles();renderEditbar();renderHead();renderTip();renderQuick();renderBoard();renderDrawer();renderPanel()}
+
+/* ---------- editing ---------- */
+function startEdit(){S.editing=true;S.panel=null;S.before=JSON.stringify(S.layout);S.hist=[];S.confirmHide=null;render();var f=$('#save');if(f)f.focus()}
+function endEdit(save){
+  var changed=dirty();
+  if(save){store(S.role,S.layout);toast(changed?'配置を保存しました':'変更はありませんでした')}
+  else{if(changed)toast('変更を取り消しました');S.layout=JSON.parse(S.before)}
+  S.editing=false;S.drawer=false;S.addAction=false;S.confirmHide=null;S.hist=[];render();
+  var b=$('#startEdit');if(b)b.focus();
+}
+function undo(){if(!S.hist.length)return;S.layout=JSON.parse(S.hist.pop());S.confirmHide=null;render();say('1つ前に戻しました')}
+function moveTo(id,to){
+  var i=idx(id);if(i<0)return;to=Math.max(0,Math.min(S.layout.b.length-1,to));if(to===i)return;
+  push();var it=S.layout.b.splice(i,1)[0];S.layout.b.splice(to,0,it);
+  render();say('「'+BLOCKS[id].t+'」を'+(to+1)+'番目に移動しました');
+}
+function setW(id,w){var i=idx(id);if(i<0||S.layout.b[i].w===w)return;push();S.layout.b[i].w=w;render();say('幅を'+WIDTHS.filter(function(x){return x[0]===w})[0][1]+'にしました')}
+function setH(id,h){var i=idx(id);if(i<0||S.layout.b[i].h===h)return;push();S.layout.b[i].h=h;render()}
+function hide(id){var i=idx(id);if(i<0)return;push();S.layout.b.splice(i,1);S.confirmHide=null;render();toast('「'+BLOCKS[id].t+'」を非表示にしました')}
+function add(id){var B=BLOCKS[id];push();S.layout.b.push({id:id,w:B.w,h:B.h,c:false});S.drawer=false;render();flash(id);toast('「'+B.t+'」を追加しました')}
+function flash(id){var el=$('#blk-'+id);if(!el)return;el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}
+function focusHandle(id){var h=document.querySelector('[data-handle="'+id+'"]');if(h)h.focus()}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest('button,[data-closedrawer],[data-closepanel]');if(!t)return;
+  var d=t.dataset;
+  if(d.role){if(!S.editing&&d.role!==S.role){S.role=d.role;S.layout=load(d.role);S.addAction=false;render();toast(ROLES[d.role].name+'の配置に切り替えました')}return}
+  if(t.id==='startEdit'){if(GK.can('act.layout'))startEdit();return}
+  if(t.id==='save')return endEdit(true);
+  if(t.id==='cancel')return endEdit(false);
+  if(t.id==='undo')return undo();
+  if(t.id==='reset'){push();S.layout=def(S.role);S.confirmHide=null;render();toast('最初の配置に戻しました。保存すると確定します');return}
+  if(t.id==='openDrawer'){S.drawer=true;S.addAction=false;renderQuick();renderDrawer();return}
+  if(d.closedrawer){S.drawer=false;renderDrawer();var o=$('#openDrawer');if(o)o.focus();return}
+  if(d.add){if(blockOk(d.add))add(d.add);return}
+  if(t.id==='closeTip'){S.tipClosed=true;try{localStorage.setItem(KEY+'tip','1')}catch(err){}renderTip();renderHead();toast('使い方は右上の「使い方」からいつでも見られます');var hb2=document.querySelector('[data-openhelp]');if(hb2)hb2.focus();return}
+  if(d.openhelp)return openHelp();
+  if(d.go){if(GK.linkOk(d.go))go(d.go);else toast('この画面は使えない設定になっています');return}
+  if(t.id==='openPal'){if(GK.can('in.palette'))openPal();return}
+  if(t.id==='addChip'){S.addAction=!S.addAction;renderQuick();var p=document.querySelector('[data-addchip]');if(p)p.focus();return}
+  if(d.addchip){push();S.layout.a.push(d.addchip);S.addAction=false;render();return}
+  if(d.rmchip){push();S.layout.a=S.layout.a.filter(function(x){return x!==d.rmchip});render();return}
+  if(d.w)return setW(d.for,+d.w);
+  if(d.h)return setH(d.for,d.h);
+  if(d.move)return moveVis(d.for,+d.move);
+  if(d.hide){if(BLOCKS[d.hide].important){S.confirmHide=d.hide;renderBoard();var ok=document.querySelector('[data-hideok]');if(ok)ok.focus()}else hide(d.hide);return}
+  if(d.hideok)return hide(d.hideok);
+  if(d.hideno){S.confirmHide=null;renderBoard();return}
+  if(d.collapse){var i=idx(d.collapse);S.layout.b[i].c=!S.layout.b[i].c;if(!S.editing)store(S.role,S.layout);renderBoard();return}
+  if(d.closepanel)return closePanel();
+  if(d.roomnav)return moveRoom(+d.roomnav);
+  if(d.room)return openRoom(d.room);
+  if(d.log)return openLog(d.log);
+  if(d.tdopen){if(D.td&&D.td.from==='today')return tdClose();return tdOpen('today',null,'[data-tdopen]')}
+  if(d.memotodo){
+    if(!GK.can('act.memotodo')||!GK.can('act.addtask'))return;
+    if(D.td&&D.td.memo===d.memotodo)return tdClose();
+    var mm=memos().filter(function(x){return x&&x.id===d.memotodo})[0];if(!mm)return;
+    return tdOpen('memo',{memo:mm.id,memoS:mm.s,t:String(mm.t||'')},'[data-memotodo="'+mm.id+'"]');
+  }
+  if(d.tdcancel)return tdClose();
+  if(d.tddue&&D.td){D.td.due=d.tddue;D.td.err=null;tdRender('');refocusSel('[data-tddue="'+d.tddue+'"]');return}
+  if(d.tdroom&&D.td){if(!ROOMS[d.tdroom])return;D.td.unit=d.tdroom;D.td.uq='';D.td.err=null;if(!D.td.privSet)D.td.priv=false;tdRender('td-roomclear');return}
+  if(d.tdroomclear&&D.td){D.td.unit='';D.td.uq='';if(!D.td.privSet)D.td.priv=true;tdRender('td-uq');return}
+  if(d.dunskip){
+    /* 滞納の段階: skip this step for this contract (4〜6; logged; undo) */
+    if(!GK.dun||!GK.can('act.dunning'))return;
+    var sk=GK.dun.skip(d.dunskip,{step:d.step});
+    if(!sk.ok){render();toast(sk.msg);return}
+    render();toast('「'+sk.label+'」を飛ばしました',sk.undo);return;
+  }
+  if(d.dundone){
+    /* 滞納の段階: this step 済み (GK.dun keeps who / when; undo removes only that step and its log line) */
+    if(!GK.dun||!GK.can('act.dunning'))return;
+    var dr=GK.dun.done(d.dundone,{step:d.step});
+    if(!dr.ok){render();toast(dr.msg);return}
+    render();toast('「'+dr.label+'」を済みにしました',dr.undo);return;
+  }
+  if(d.done||d.undone||d.later){
+    if(!GK.can(d.later?'act.later':'act.done'))return;
+    var id=d.done||d.undone||d.later,tk=taskBy(id);if(!tk)return;
+    if(GK.taskVisible&&!GK.taskVisible(tk))return; /* someone else's private to-do: never touched from here */
+    var was=keep(tk,['done','doneAt','due']),rec,pv=!!tk.private;
+    /* undo: put back only this task's done/doneAt/due and drop only this log line (found again by id in the current GK.db) */
+    var back=function(){putBack(taskBy(id),was);unlog([rec]);GK.save()};
+    /* a private to-do: the log line hides its text and goes to no room's 対応履歴 */
+    if(d.done){tk.done=true;tk.doneAt=T;rec=pv?logIt(GK.taskLogText(tk,'完了に')):logIt('対応を完了：'+tk.t,tk.unit);GK.save();toast('「'+tk.t+'」を完了にしました',back)}
+    else if(d.undone){tk.done=false;delete tk.doneAt;rec=logIt(pv?GK.taskLogText(tk,'未完了に戻'):'完了を取り消し：'+tk.t+'（'+rl(tk.unit)+'）');GK.save();toast('「'+tk.t+'」を未完了に戻しました',back)}
+    else{
+      /* never move a due date earlier: one day after the later of (due, today) */
+      var base=tk.due&&tk.due>T?tk.due:T;tk.due=GK.addDays(base,1);
+      rec=logIt(pv?GK.taskLogText(tk,'延期'):'期限を '+GK.sd(tk.due)+' に延期：'+tk.t+'（'+rl(tk.unit)+'）');GK.save();
+      toast('「'+tk.t+'」の期限を '+GK.sdw(tk.due)+' にしました',back);
+    }
+    render();return;
+  }
+  if(d.kf){D.kf=D.kf===d.kf?'':d.kf;D.showAll=false;renderBoard();var kb=document.querySelector('.stat[data-kf="'+d.kf+'"]');if(kb)kb.focus();return}
+  if(d.more!==undefined){D.showAll=d.more==='1';renderBoard();if(D.showAll){var sl=document.querySelector('.scroll-list');if(sl)sl.focus()}else{var mb=document.querySelector('[data-more]');if(mb)mb.focus();$('#blk-today').scrollIntoView({block:'nearest'})}return}
+  if(d.showdone){D.showDone=!D.showDone;renderBoard();refocus('');var sd=document.querySelector('[data-showdone]');if(sd)sd.focus();return}
+  if(d.tqclear){D.tq='';renderBoard();refocus('today-q');return}
+  if(d.toastundo){var lb=t.textContent;if(undoFn){undoFn();undoFn=null;render()}toast(lb==='元に戻す'?'元に戻しました':'下書きを破棄しました');return}
+  if(d.mine!==undefined){D.mine=d.mine==='1';renderBoard();refocus('');var b=document.querySelector('[data-mine="'+d.mine+'"]');if(b)b.focus();return}
+  if(d.occm!==undefined)return;
+  if(d.day){D.day=d.day;renderBoard();var db=document.querySelector('.day[data-day="'+d.day+'"]');if(db)db.focus();return}
+  if((d.msg||d.copy)&&!GK.can('in.msg'))return;
+  if(d.msg){D.msg[S.panel.room]=d.msg;renderPanel();var mt=document.querySelector('[data-msg="'+d.msg+'"]');if(mt)mt.focus();return}
+  if(d.copy){
+    var ta2=$('#msg-text'),txt2=ta2.value;
+    var ok=function(){toast('文面をコピーしました。メールやSMSに貼り付けてください')};
+    var ng=function(){ta2.focus();ta2.select();toast('コピーできなかったので文面を選択しました。Ctrl+C でコピーしてください')};
+    try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt2).then(ok,ng);else ng()}catch(err){ng()}
+    return;
+  }
+  if(d.copytel){
+    var tv=d.copytel;try{navigator.clipboard.writeText(tv).then(function(){toast(tv+' をコピーしました')},function(){toast(tv)})}catch(err){toast(tv)}return;
+  }
+  if(d.logtask){var lt=taskBy(d.logtask);if(!lt||(GK.taskVisible&&!GK.taskVisible(lt)))return;return openLog(lt.unit||'',lt.id)}
+  if(d.tpl){var ta=$('#lf-text');ta.value=(ta.value?ta.value.replace(/\s*$/,'')+'\n':'')+d.tpl;ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);return}
+  if(d.reveal&&!GK.can('pi.tel'))return;
+  if(d.revealowner&&!GK.can('pi.owner'))return;
+  if(d.reveal){D.shown[d.reveal]='今日 '+nowHM();GK.log('入居者の電話番号を表示（'+rl(d.reveal)+'）');GK.save();renderPanel();toast('電話番号を表示しました（操作ログに記録）');return}
+  if(d.revealowner){var ow=GK.owner(d.revealowner);if(!ow)return;D.shownOwner[ow.id]='今日 '+nowHM();GK.log('オーナーの電話番号を表示（'+ow.n+' 様）');GK.save();renderPanel();toast('オーナーの電話番号を表示しました（操作ログに記録）');return}
+  if(d.resched&&!GK.can('act.resched'))return;
+  if(d.resched){D.resched=D.resched===d.resched?null:d.resched;updToday();if(D.resched)refocus('rs-date');else refocusSel('[data-resched="'+d.resched+'"]');return}
+  if(d.rscancel)return cancelResched();
+  if(d.prop)return openProp(d.prop);
+  if(d.hof!==undefined){D.hof=d.hof;D.hoAll=false;renderBoard();var hb=document.querySelector('[data-hof="'+d.hof+'"]');if(hb)hb.focus();return}
+  if(d.homore!==undefined){D.hoAll=d.homore==='1';var hl2=$('#ho-list');if(hl2)hl2.innerHTML=hoList();var hm=document.querySelector('#ho-list .scroll-list,[data-homore]');if(hm)hm.focus();return}
+  if((d.selall||d.mkren)&&!GK.can('act.renew'))return;
+  if(d.selall){var shownRen=document.querySelectorAll('#blk-renewals [data-ren]');[].forEach.call(shownRen,function(c){D.sel[c.getAttribute('data-ren')]=true});renderBoard();return}
+  if(d.mkren){
+    /* same result as 「契約・更新」: the lease gets 案内作成済み + a letter, recorded in the room history; undo puts everything back */
+    var made=[],madeL=[],recs=[],closed=[];
+    Object.keys(D.sel).forEach(function(lid){
+      if(!D.sel[lid])return;var l=GK.lease(lid);if(!l||l.status!=='有効'||l.notice||l.renewal)return;
+      var ns=GK.addDays(l.end,1);
+      madeL.push({id:l.id,was:keep(l,['renewal','letter'])});
+      l.renewal='案内作成済み';l.letter={created:T,start:ns,end:GK.addYears(ns,2),rent:l.rent,fee:l.fee,due:letterDue(l.end)};
+      recs.push(logIt('更新案内を作成しました（更新後 '+GK.jp(ns)+'〜'+GK.jp(l.letter.end)+'・未送付）',l.unit));
+      made.push(l.unit);
+    });
+    GK.db.tasks.forEach(function(x){if(!x.done&&!x.private&&/更新の案内を送る/.test(x.t)&&made.indexOf(x.unit)>=0){closed.push({id:x.id,was:keep(x,['done','doneAt'])});x.done=true;x.doneAt=T}});
+    GK.save();D.sel={};render();
+    /* undo: only the leases made here lose renewal/letter, only the tasks closed here reopen, only these log lines go */
+    var backR=function(){
+      madeL.forEach(function(m){putBack(GK.lease(m.id),m.was)});
+      closed.forEach(function(c){putBack(taskBy(c.id),c.was)});
+      unlog(recs);GK.save();
+    };
+    var names=made.map(rl),nm=names.slice(0,3).join('・')+(names.length>3?' ほか'+(names.length-3)+'件':'');
+    if(made.length)toast(nm+' の更新案内を作成しました（まだ送付していません）',backR);
+    return;
+  }
+  if(d.delnote!==undefined){
+    if(!GK.can('act.memo'))return;
+    var ns=memos(),mid=d.delnote,ni=-1;ns.forEach(function(x,j){if(ni<0&&x&&x.id===mid)ni=j});if(ni<0)return;
+    var nv=ns.splice(ni,1)[0];GK.save();renderBoard();
+    /* undo puts this one memo back near where it was (unless another tab already has it) */
+    var backN=function(){var cur=memos();if(cur.some(function(x){return x&&x.id===nv.id}))return;cur.splice(Math.min(ni,cur.length),0,nv);GK.save()};
+    toast('メモ「'+String(nv.t||'')+'」を削除しました',backN);var nt=$('#note-text');if(nt)nt.focus();return;
+  }
+  if(d.qa)return runAction(d.qa);
+  if(d.mock){var dest=(d.room?'properties.html#room-'+d.room:PAGES[d.mock]);if(dest)return go(dest);toast('「'+d.mock+'」はほかのページから操作できます');return}
+});
+document.addEventListener('change',function(e){
+  var t=e.target,d=t.dataset||{};
+  if(d.mo!==undefined&&!GK.can('act.mocheck'))return;
+  if(d.ren!==undefined&&!GK.can('act.renew'))return;
+  if(d.mo!==undefined&&D.mo){var mi=+d.mo;if(!D.mo.items[mi])return;D.mo.items[mi][1]=t.checked?1:0;moChecks()[D.mo.lease]=D.mo.items.map(function(x){return !!x[1]});GK.save();renderBoard();refocus(t.id);if(D.mo.items.every(function(x){return x[1]}))toast('退去の段取りがすべて完了しました');return}
+  if(d.ren!==undefined){D.sel[d.ren]=t.checked;renderBoard();refocus(t.id);return}
+  if(D.td&&(t.id==='td-s-all'||t.id==='td-s-me')){D.td.priv=t.id==='td-s-me'?!!t.checked:!t.checked;D.td.privSet=true;tdRender(t.id);return}
+  if(D.td&&t.id==='td-who'){D.td.who=t.value;return}
+  if(D.td&&t.id==='td-due'){D.td.due=t.value;tdClearErr('td-due');return}
+  if(t.id==='lf-room'){var te=$('#lf-ten');if(te)te.innerHTML=lfTen(t.value);if(t.value){$('#lf-room-err').hidden=true;t.removeAttribute('aria-invalid')}return}
+});
+function updToday(){var l=$('#today-list');if(l)l.innerHTML=todayList();markOpen()}
+var wasWide=window.innerWidth>1180;
+window.addEventListener('resize',function(){var w=window.innerWidth>1180;if(w!==wasWide){wasWide=w;if(S.panel&&S.panel.type==='room')renderPanel()}});
+/* lists are not live regions; one short announcement after typing pauses */
+var sayT;
+function sayLater(fn){clearTimeout(sayT);sayT=setTimeout(function(){say(fn())},400)}
+document.addEventListener('input',function(e){
+  if(e.target.id==='today-q'){D.tq=e.target.value;updToday();sayLater(function(){return D.tq.trim()?'一致する対応 '+todayItems().length+'件':'すべての対応を表示しています'});return}
+  if(e.target.id==='ho-q'){D.hoq=e.target.value;var hl3=$('#ho-list');if(hl3)hl3.innerHTML=hoList();sayLater(function(){return '一致する物件 '+(D.hoCount||0)+'件'});return}
+  if(e.target.id==='mock-search'){D.q=e.target.value;var r=$('#search-results');if(r)r.innerHTML=searchList();sayLater(function(){return D.q.trim()?'一致する部屋 '+searchHits(D.q).length+'件':'最近開いた部屋を表示しています'});return}
+  if(D.td&&e.target.id==='td-t'){D.td.t=e.target.value;if(e.target.value.trim())tdClearErr('td-t');return}
+  if(D.td&&e.target.id==='td-due'){D.td.due=e.target.value;tdClearErr('td-due');return}
+  if(D.td&&e.target.id==='td-uq'){D.td.uq=e.target.value;tdClearErr('td-uq');var hb=$('#td-hitbox');if(hb)hb.innerHTML=tdHitsHtml();sayLater(function(){var n=tdHits(D.td&&D.td.uq).length;return n?'部屋の候補 '+n+'件':'部屋の候補はありません'});return}
+  if(e.target.id==='lf-text'&&e.target.value.trim()){$('#lf-err').hidden=true;e.target.removeAttribute('aria-invalid')}
+});
+document.addEventListener('submit',function(e){
+  e.preventDefault();
+  if(e.target.id==='td-form'){
+    /* read the fields once more (a value set without an input event, e.g. autofill) */
+    if(D.td){var f1=$('#td-t'),f2=$('#td-due'),f3=$('#td-uq'),f4=$('#td-who');if(f1)D.td.t=f1.value;if(f2)D.td.due=f2.value;if(f3)D.td.uq=f3.value;if(f4&&!f4.disabled)D.td.who=f4.value}
+    return tdSave();
+  }
+  if(e.target.id==='note-form'){
+    if(!GK.can('act.memo'))return;
+    var v=$('#note-text').value.trim();if(!v){$('#note-text').focus();return}
+    var nm={id:newMemoId(),t:v,s:$('#note-scope').value==='共有'?'共有':'個人'};
+    memos().push(nm);GK.save();renderBoard();refocus('note-text');
+    toast('メモを追加しました',function(){GK.db.memos=memos().filter(function(x){return !(x&&x.id===nm.id)});GK.save()});return;
+  }
+  if(e.target.id==='rs-form'){
+    if(!GK.can('act.resched')){D.resched=null;updToday();return}
+    var rt=taskBy(e.target.getAttribute('data-task'));if(!rt){D.resched=null;updToday();return}
+    var nd=$('#rs-date').value,nt=$('#rs-time').value,told=$('#rs-told').checked,er=$('#rs-err'),rl2=apptLease(rt);
+    ['rs-date','rs-time'].forEach(function(id){var x=$('#'+id);if(x)x.removeAttribute('aria-invalid')});
+    var msg=!/^\d{4}-\d{2}-\d{2}$/.test(nd)?['rs-date','新しい日付を入れてください。']
+      :nd<T?['rs-date','今日（'+GK.sd(T)+'）より前の日付にはできません。']
+      :rl2&&rl2.notice.date&&nd>rl2.notice.date?['rs-date','退去日（'+GK.sd(rl2.notice.date)+'）より後にはできません。立会いは退去日までに行います。']
+      :nt&&!/^\d{2}:\d{2}$/.test(nt)?['rs-time','時刻を確かめてください。']:null;
+    if(msg){er.textContent=msg[1];er.hidden=false;var bad=$('#'+msg[0]);bad.setAttribute('aria-invalid','true');bad.focus();return}
+    var oldD=rt.due,oldT=apptTime(rt),base=apptBase(rt),rid=rt.id;
+    if(nd===oldD&&nt===oldT){D.resched=null;updToday();refocusSel('[data-resched="'+rid+'"]');toast('日程は変わっていません');return}
+    var wasT=keep(rt,['t','due','time']),lzid=rl2?rl2.id:'',wasI=rl2?keep(rl2.notice,['insp']):null,newT=[],recS;
+    rt.due=nd;if(nt)rt.time=nt;else delete rt.time;
+    rt.t=base+'（'+apptLabel(nd,nt)+'）';
+    if(rl2)rl2.notice.insp=nd+(nt?' '+nt:'');
+    recS=logIt(base+'の日程を '+apptLabel(oldD,oldT)+' → '+apptLabel(nd,nt)+' に変更（'+(told?'入居者に連絡済み':'入居者にはまだ連絡していません')+'）',rt.unit);
+    /* not told yet: the call goes onto today's list so it is not forgotten */
+    if(!told){var ct='入居者へ日程の変更を連絡（'+base+' '+apptLabel(nd,nt)+'）',ck;if(typeof GK.addTask==='function')ck=GK.addTask(rt.unit,ct,T);else{ck={id:'n'+Date.now(),unit:rt.unit,t:ct,due:T,who:ME,done:false};GK.db.tasks.push(ck)}if(ck)newT.push(ck.id)}
+    GK.save();D.resched=null;render();refocusSel('[data-resched="'+rid+'"]');
+    /* undo: this task's t/due/time, this lease's 立会い time, the call task made here and this log line only */
+    var backS=function(){
+      putBack(taskBy(rid),wasT);
+      var cl=lzid&&GK.lease(lzid);if(cl&&cl.notice&&wasI)putBack(cl.notice,wasI);
+      dropTasks(newT);unlog([recS]);GK.save();
+    };
+    toast(base+'の日程を '+apptLabel(nd,nt)+' に変更しました'+(told?'':'。入居者への連絡を「今日確認すること」に入れました'),backS);
+    return;
+  }
+  if(e.target.id==='log-form'){
+    if(!GK.can('act.record'))return;
+    var txt=$('#lf-text').value.trim(),room=$('#lf-room').value,bad=null;
+    $('#lf-room-err').hidden=!!room;if(!room){$('#lf-room').setAttribute('aria-invalid','true');bad=bad||$('#lf-room')}
+    $('#lf-err').hidden=!!txt;if(!txt){$('#lf-text').setAttribute('aria-invalid','true');bad=bad||$('#lf-text')}
+    if(bad){bad.focus();return}
+    var nx=$('#lf-next').value.trim(),dn=$('#lf-done'),due=$('#lf-due').value;
+    /* 「部屋なし」 (only offered for a to-do without a room): the record still goes into the home 対応履歴, with no room */
+    var none=room==='-';if(none)room='';
+    var recL=logIt($('#lf-kind').value+'：'+txt.replace(/\n+/g,' '),room),ftId='',ftWas=null,nxId='';
+    if(none){var hid0='h'+Date.now()+'-n'+Math.floor(Math.random()*1000);if(!Array.isArray(GK.db.hist))GK.db.hist=[];GK.db.hist.unshift({id:hid0,unit:'',at:recL.at,t:recL.t,who:ME});recL.hid=hid0}
+    if(dn&&dn.checked&&S.panel.task){var ft=taskBy(S.panel.task);if(ft){ftId=ft.id;ftWas=keep(ft,['done','doneAt']);ft.done=true;ft.doneAt=T}}
+    if(nx){nxId='n'+Date.now()+String(Math.floor(Math.random()*1000));GK.db.tasks.push({id:nxId,unit:room,t:nx,due:due,who:ME,done:false})}
+    GK.save();
+    /* undo: this log line, the next task made here, and the task this form closed (done/doneAt only) */
+    var back=function(){unlog([recL]);if(nxId)dropTasks([nxId]);if(ftId)putBack(taskBy(ftId),ftWas);GK.save()};
+    S.panel.sent=true;D.draft=null;closePanel();render();
+    if($('#blk-history'))flash('history');
+    toast((room?rl(room)+'の対応':'対応（部屋なし）')+'を記録しました'+(nx?'。次の対応（'+GK.sd(due)+'）を「今日確認すること」に入れました':''),back);
+  }
+});
+document.addEventListener('mousedown',function(e){if(S.addAction&&!e.target.closest('.pop-wrap')){S.addAction=false;renderQuick()}});
+
+document.addEventListener('keydown',function(e){
+  var k=e.key;
+  if((e.ctrlKey||e.metaKey)&&(k==='k'||k==='K')){if(!GK.can('in.palette'))return;e.preventDefault();openPal();return}
+  if(P.open)return;
+  var typing=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName||'');
+  if(S.editing&&(e.ctrlKey||e.metaKey)&&(k==='z'||k==='Z')&&!typing){e.preventDefault();undo();return}
+  if(!typing&&!S.editing&&!S.panel&&!S.drawer&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    if((k==='n'||k==='N')&&GK.can('act.record')){e.preventDefault();openLog();return}
+    if(k==='/'){var si=$('#mock-search');if(si){e.preventDefault();si.scrollIntoView({block:'center'});si.focus()}return}
+    if(k==='?'){e.preventDefault();openHelp();return}
+    if((k==='m'||k==='M')&&$('#blk-today')){D.mine=!D.mine;renderBoard();toast(D.mine?'自分の担当だけ表示しています':'全員の対応を表示しています');return}
+  }
+  /* ↑↓ switch rooms only while focus is in the room switcher or the today list (elsewhere they scroll as usual) */
+  if(!typing&&S.panel&&S.panel.type==='room'&&e.target.closest&&e.target.closest('.room-nav,#today-list')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&(k==='ArrowDown'||k==='ArrowUp')){e.preventDefault();moveRoom(k==='ArrowDown'?1:-1);return}
+  if(k==='Escape'&&D.td&&((e.target.closest&&e.target.closest('#td-form'))||!S.panel)){e.preventDefault();tdClose();return}
+  if(k==='Escape'&&D.resched&&(!S.panel||(e.target.closest&&e.target.closest('#rs-form')))){e.preventDefault();cancelResched();return}
+  if(k==='Escape'&&closeNav()){e.preventDefault();return}
+  if(k==='Escape'){if(S.panel){closePanel();return}if(S.drawer){S.drawer=false;renderDrawer();return}if(S.addAction){S.addAction=false;renderQuick();return}}
+  var h=e.target.dataset&&e.target.dataset.handle;
+  if(h&&/^Arrow/.test(k)&&S.editing){
+    e.preventDefault();
+    var i=idx(h);
+    if(e.shiftKey&&(k==='ArrowLeft'||k==='ArrowRight')){
+      var ws=WIDTHS.map(function(x){return x[0]}),wi=ws.indexOf(S.layout.b[i].w);
+      wi=Math.max(0,Math.min(ws.length-1,wi+(k==='ArrowRight'?1:-1)));setW(h,ws[wi]);
+    }else moveVis(h,(k==='ArrowUp'||k==='ArrowLeft')?-1:1);
+    focusHandle(h);
+  }
+});
+
+/* drag & drop: blocks */
+var board=$('#board');
+function clearDrop(){document.querySelectorAll('.drop-before,.drop-after,.drop-above,.drop-below').forEach(function(x){x.classList.remove('drop-before','drop-after','drop-above','drop-below')})}
+function dropSide(el,e){
+  var r=el.getBoundingClientRect(),full=r.width>board.getBoundingClientRect().width*0.9;
+  return full?(e.clientY<r.top+r.height/2?'above':'below'):(e.clientX<r.left+r.width/2?'before':'after');
+}
+board.addEventListener('dragstart',function(e){
+  var el=e.target.closest&&e.target.closest('.block');if(!el||!S.editing)return;
+  S.dragId=el.dataset.id;el.classList.add('dragging');
+  try{e.dataTransfer.setData('text/plain',S.dragId);e.dataTransfer.effectAllowed='move'}catch(err){}
+});
+board.addEventListener('dragover',function(e){
+  if(!S.dragId)return;var el=e.target.closest('.block');if(!el||el.dataset.id===S.dragId)return;
+  e.preventDefault();clearDrop();el.classList.add('drop-'+dropSide(el,e));
+});
+board.addEventListener('drop',function(e){
+  if(!S.dragId)return;e.preventDefault();
+  var el=e.target.closest('.block'),id=S.dragId;clearDrop();S.dragId=null;
+  if(!el||el.dataset.id===id){render();return}
+  var side=dropSide(el,e),after=(side==='after'||side==='below');
+  push();var it=S.layout.b.splice(idx(id),1)[0];var to=idx(el.dataset.id)+(after?1:0);
+  S.layout.b.splice(to,0,it);render();say('「'+BLOCKS[id].t+'」を移動しました');
+});
+board.addEventListener('dragend',function(){S.dragId=null;clearDrop();document.querySelectorAll('.dragging').forEach(function(x){x.classList.remove('dragging')})});
+
+/* drag & drop: quick-action chips */
+var quick=$('#quick');
+quick.addEventListener('dragstart',function(e){var c=e.target.closest&&e.target.closest('[data-chip]');if(!c)return;S.dragChip=c.dataset.chip;try{e.dataTransfer.setData('text/plain',S.dragChip)}catch(err){}});
+quick.addEventListener('dragover',function(e){if(!S.dragChip)return;var c=e.target.closest('[data-chip]');if(!c||c.dataset.chip===S.dragChip)return;e.preventDefault();clearDrop();var r=c.getBoundingClientRect();c.classList.add(e.clientX<r.left+r.width/2?'drop-before':'drop-after')});
+quick.addEventListener('drop',function(e){
+  if(!S.dragChip)return;e.preventDefault();var c=e.target.closest('[data-chip]');var id=S.dragChip;S.dragChip=null;clearDrop();if(!c||c.dataset.chip===id)return;
+  var r=c.getBoundingClientRect(),after=e.clientX>=r.left+r.width/2;
+  push();var a=S.layout.a.filter(function(x){return x!==id});var to=a.indexOf(c.dataset.chip)+(after?1:0);a.splice(to,0,id);S.layout.a=a;render();
+});
+quick.addEventListener('dragend',function(){S.dragChip=null;clearDrop()});
+
+/* ---------- Ctrl+K palette ---------- */
+var P={open:false,sel:0,items:[],ret:null};
+function palItems(q){
+  q=(q||'').trim().toLowerCase();
+  var out=[];
+  function m(s){return !q||s.toLowerCase().indexOf(q)>=0}
+  Object.keys(ACTIONS).forEach(function(k){if(actionOk(k)&&m(ACTIONS[k]))out.push({g:'操作',l:ACTIONS[k],s:ACTION_PAGES[k]?'ページを開く':'開く',run:function(){runAction(k)}})});
+  if(m('使い方 ヘルプ 近道 ショートカット'))out.push({g:'操作',l:'使い方を見る',s:'開く',run:openHelp});
+  shownBlocks().forEach(function(it){var B=BLOCKS[it.id];if(m(B.t))out.push({g:'このホームのブロック',l:B.t,s:'移動',run:function(){flash(it.id)}})});
+  propNames().forEach(function(n){if(m(n))out.push({g:'物件',l:n,s:'物件の詳細を開く',run:function(){openProp(n)}})});
+  searchHits(q).slice(0,q?30:8).forEach(function(k){var R=ROOMS[k];out.push({g:'部屋',l:R.p+' '+R.n+(R.ten?'　'+R.ten:''),s:'部屋の情報を開く',run:function(){openRoom(k)}})});
+  /* じょのじょ (ganki-jonojo.js): ask the typed words as a question (or just open it) */
+  if(GK.jono&&GK.can('in.jono')){var jq=($('#pal-q')||{}).value||'',jn=GK.jono.name(),jt=String(jq).trim();
+    out.push({g:jn,l:jt?jn+'に聞く：「'+jt.slice(0,40)+'」':jn+'に聞く',s:'使い方を聞く',run:function(){GK.jono.open({ret:P.ret,unhide:true,q:jt&&!/^(じょのじょ|ジョノジョ)$/.test(jt)?jt:''})}})}
+  return out;
+}
+function openPal(){if(P.open||!GK.can('in.palette'))return;P.open=true;P.sel=0;P.ret=document.activeElement;
+  $('#palette').innerHTML='<div class="pal" data-palbg="1"><div class="pal-box" role="dialog" aria-modal="true" aria-label="探す・移動"><input id="pal-q" type="text" role="combobox" aria-label="物件名・操作名・ブロック名で探す" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list" placeholder="物件名・操作名・ブロック名を入力" autocomplete="off"><div class="pal-list" id="pal-list" role="listbox"></div><div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> 選ぶ</span><span><kbd>Enter</kbd> 開く</span><span><kbd>Esc</kbd> 閉じる</span></div></div></div>';
+  var inp=$('#pal-q');inp.addEventListener('input',function(){P.sel=0;palList()});inp.addEventListener('keydown',palKey);
+  $('#palette .pal').addEventListener('mousedown',function(e){if(e.target.dataset.palbg)closePal()});
+  palList();inp.focus();
+}
+function palList(){
+  P.items=palItems($('#pal-q').value);var h='',g='';
+  if(!P.items.length)h='<div class="pal-group">見つかりませんでした。別の言葉で探してください。</div>';
+  P.items.forEach(function(it,i){if(it.g!==g){g=it.g;h+='<div class="pal-group">'+esc(g)+'</div>'}h+='<button type="button" class="pal-item" role="option" id="pal-'+i+'" data-pal="'+i+'" aria-selected="'+(i===P.sel)+'"><span>'+esc(it.l)+'</span><span>'+esc(it.s)+'</span></button>'});
+  var L=$('#pal-list');L.innerHTML=h;
+  $('#pal-q').setAttribute('aria-activedescendant',P.items.length?'pal-'+P.sel:'');
+  var s=L.querySelector('[aria-selected="true"]');if(s)s.scrollIntoView({block:'nearest'});
+  L.querySelectorAll('[data-pal]').forEach(function(b){b.addEventListener('click',function(){runPal(+b.dataset.pal)})});
+}
+function palKey(e){
+  if(e.key==='ArrowDown'){e.preventDefault();if(P.items.length){P.sel=(P.sel+1)%P.items.length;palList()}}
+  else if(e.key==='ArrowUp'){e.preventDefault();if(P.items.length){P.sel=(P.sel-1+P.items.length)%P.items.length;palList()}}
+  else if(e.key==='Enter'){e.preventDefault();if(P.items.length)runPal(P.sel)}
+  else if(e.key==='Escape'){e.preventDefault();closePal()}
+}
+function runPal(i){var it=P.items[i];closePal(true);if(it)it.run()}
+function closePal(noReturn){P.open=false;$('#palette').innerHTML='';if(!noReturn&&P.ret&&P.ret.focus)P.ret.focus()}
+
+if(phoneMQ.addEventListener)phoneMQ.addEventListener('change',function(){render()});
+/* keep in step with the other pages: another tab saved the shared store, or we came back with the browser's Back button */
+/* one refresh path for every outside change: ganki-data.js reloads GK.db when another tab saves and calls window.GKrefresh;
+   the page's own storage / Back-button listeners only reload the store and ask for the same refresh. Calls in the same tick
+   are merged, so a save seen by both listeners renders once. A log form that is being written is left alone. */
+var refreshT=null;
+/* what the user is typing survives the re-render: focus + caret, and the values of the open inputs */
+var KEEP_IDS=['note-text','note-scope','rs-date','rs-time','rs-told','today-q','ho-q','mock-search','td-t','td-due','td-uq'];
+function keepFocus(fn){
+  var a=document.activeElement,id=a&&a.id,sel=null,vals={};
+  try{if(a&&typeof a.selectionStart==='number')sel=[a.selectionStart,a.selectionEnd]}catch(e){}
+  KEEP_IDS.forEach(function(k){var x=document.getElementById(k);if(x)vals[k]=x.type==='checkbox'?{c:!!x.checked}:{v:x.value}});
+  fn();
+  Object.keys(vals).forEach(function(k){var x=document.getElementById(k);if(!x)return;if('c' in vals[k])x.checked=vals[k].c;else if(x.value!==vals[k].v)x.value=vals[k].v});
+  if(id){var n=document.getElementById(id);if(n&&n!==a&&n.focus){try{n.focus();if(sel&&n.setSelectionRange)n.setSelectionRange(sel[0],sel[1])}catch(e){}}}
+}
+function refreshNow(){refreshT=null;if(GK.pageIsOff&&GK.pageIsOff())return;
+  /* 機能の設定 changed: whatever is open for a feature that is now OFF is closed with a short note */
+  if(S.panel&&S.panel.type==='log'&&!GK.can('act.record')){S.panel=null;renderPanel();GK.offToast('対応の記録')}
+  if(D.resched&&!GK.can('act.resched')){D.resched=null;GK.offToast('日程を変える')}
+  if(D.td&&(!GK.can('act.addtask')||(D.td.from==='memo'&&!GK.can('act.memotodo')))){var wasMemo=D.td.from==='memo';D.td=null;GK.offToast(wasMemo?'メモからやることにする':'やることを追加')}  if(S.editing&&!GK.can('act.layout')){S.layout=JSON.parse(S.before);S.editing=false;S.drawer=false;S.addAction=false;S.confirmHide=null;S.hist=[];renderEditbar();renderDrawer();GK.offToast('並びを変える')}
+  if(P.open&&!GK.can('in.palette'))closePal(true);
+  keepFocus(function(){
+  buildData();buildMo();
+  /* the task being rescheduled was removed elsewhere: close its form */
+  if(D.resched&&!taskBy(D.resched))D.resched=null;
+  renderNav();renderHead();renderTip();renderQuick();renderBoard();if(S.drawer)renderDrawer();if(S.panel&&S.panel.type!=='log')renderPanel(true);
+})}
+function refreshSoon(){if(refreshT)return;refreshT=setTimeout(refreshNow,0)}
+window.GKrefresh=function(){refreshSoon()};
+/* (a refresh already pending means ganki-data.js has reloaded the store for this event) */
+window.addEventListener('storage',function(e){if(e.key===(GK.KEY||'ganki-demo-db-v1')&&!refreshT&&!(GK.pageIsOff&&GK.pageIsOff())){GK.db=GK.load();refreshSoon()}});
+window.addEventListener('pageshow',function(e){if(e.persisted&&!refreshT&&!(GK.pageIsOff&&GK.pageIsOff())){GK.db=GK.load();refreshSoon()}});
+render();
+})();
+</script>
+</body>
+</html>

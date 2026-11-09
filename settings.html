@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>機能の設定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="ganki-base.css"><style>
+[hidden]{display:none!important}
+.fl-top{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.fl-top .search{flex:1 1 260px;max-width:420px;min-height:40px}
+.fl-msg{padding:10px 12px;border-radius:8px;background:var(--danger-soft);color:var(--danger);font-size:13px}
+.fl-msg:empty{display:none}
+.fl-note{font-size:12.5px;color:var(--muted)}
+.fl-note b{color:var(--fg)}
+/* role table */
+.ftbl{table-layout:fixed}
+.ftbl col.c-name{width:auto}.ftbl col.c-role{width:118px}
+.ftbl thead th{text-align:center}.ftbl thead th:first-child{text-align:left}
+.ftbl th.fn{font-weight:400;color:var(--fg);white-space:normal;position:static;background:none;font-size:13px;padding:8px 10px;border-top:1px solid var(--line);vertical-align:middle}
+.fn-n{display:block;font-weight:500}
+.fn-d{display:block;font-size:12px;color:var(--muted);line-height:1.5}
+.fn-need{display:block;font-size:11.5px;color:var(--info)}
+.ftbl td{text-align:center;vertical-align:middle}
+.ftbl tr.grp th,.ftbl tr.grp td{background:var(--surface-2);border-top:1px solid var(--line)}
+.ftbl tr.grp th{position:static;padding:4px 6px}
+.grp-btn{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;border:0;background:none;padding:4px 6px;font:inherit;font-size:14px;font-weight:700;color:var(--fg);text-align:left;border-radius:6px}
+.grp-btn:hover{background:var(--surface)}
+.grp-btn .chev{display:inline-block;width:14px;transition:transform .15s;color:var(--muted)}
+.grp-btn[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.grp-btn .cap{font-weight:400}
+.grp-cell{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11.5px;color:var(--muted)}
+.bulk{border:1px solid var(--input);background:var(--surface);border-radius:6px;font-size:12px;padding:2px 8px;min-height:32px;color:var(--fg);white-space:nowrap}
+.bulk:hover{background:var(--primary-soft)}
+/* switch: the whole button is the target (44px) */
+.sw{display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:0 6px;border:0;background:none;border-radius:8px;font:inherit;font-size:12.5px;color:var(--muted);cursor:pointer}
+.sw:hover{background:var(--surface-2)}
+.sw-t{position:relative;width:40px;height:22px;border-radius:999px;background:#c3cad6;flex:0 0 auto;transition:background .15s}
+.sw-t::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw[aria-checked="true"] .sw-t{background:var(--ok)}
+.sw[aria-checked="true"] .sw-t::after{left:21px}
+.sw[aria-checked="true"]{color:var(--ok);font-weight:700}
+.sw-v{min-width:2.2em;text-align:left}
+.sw-why{display:block;font-size:11px;color:var(--warn);line-height:1.4}
+.sw-lock{display:inline-flex;align-items:center;min-height:44px;font-size:12px;color:var(--ok);font-weight:700}
+tr.ask td{background:var(--warn-soft);text-align:left}
+/* in-page question (instead of confirm()) */
+.fl-ask{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:13px;color:var(--fg);padding:4px 2px}
+.fl-ask p{flex:1 1 280px;min-width:0}
+.fl-ask .acts{display:flex;gap:8px;flex-wrap:wrap}
+.fl-ask .btn{min-height:40px}
+/* person tab */
+.ppick{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.ppick select{border:1px solid var(--input);border-radius:8px;padding:7px 10px;background:var(--surface);min-height:44px;font-size:14px}
+.pgrp{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pgrp + .pgrp{margin-top:8px}
+.pgrp > .grp-btn{background:var(--surface-2);border-radius:0;padding:4px 10px}
+.prows{list-style:none;margin:0;padding:0}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(150px,200px);gap:6px 14px;align-items:center;padding:8px 12px;border-top:1px solid var(--line)}
+.prow.is-ex{background:var(--primary-soft)}
+.seg3{display:inline-flex;flex-wrap:wrap;background:var(--surface-2);border-radius:8px;padding:3px;gap:3px}
+.seg3 button{border:0;background:transparent;border-radius:6px;padding:4px 10px;min-height:40px;font-size:12.5px;color:var(--muted)}
+.seg3 button[aria-pressed="true"]{background:var(--surface);color:var(--fg);font-weight:700;box-shadow:var(--shadow)}
+.peff{font-size:12.5px}
+.peff .ok{color:var(--ok)}.peff .ng{color:var(--danger)}
+.peff .why{display:block;font-size:11.5px;color:var(--muted)}
+/* log */
+.lrows li .sub{font-size:12px;color:var(--muted)}
+@media (max-width:640px){
+  .ftbl,.ftbl tbody,.ftbl tr,.ftbl th,.ftbl td{display:block;width:100%}
+  .ftbl colgroup,.ftbl thead{display:none}
+  .ftbl tr{border-top:1px solid var(--line);padding:6px 10px}
+  .ftbl tr.grp{padding:4px 6px;background:var(--surface-2)}
+  .ftbl th.fn,.ftbl td,.ftbl tr.grp th,.ftbl tr.grp td{border:0;padding:2px 0}
+  .ftbl td{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;min-height:44px}
+  .ftbl td::before{content:attr(data-label);font-size:13px;color:var(--fg)}
+  .ftbl td .sw-why{text-align:right}
+  .grp-cell{flex-direction:row;gap:10px}
+  .bulk{min-height:44px;padding:4px 12px;font-size:13px}
+  .prow{grid-template-columns:minmax(0,1fr)}
+  .seg3{display:flex}.seg3 button{flex:1 1 auto;min-height:44px}
+  .tbl-wrap{overflow-x:visible;border:0}
+}
+</style></head>
+<body><div class="topbar" id="topbar"></div><div class="app"><aside class="side" id="side"></aside><main class="main" id="main">
+ <header class="head"><div><h1>機能の設定</h1><p class="sub">役割ごと・人ごとに、使える機能を決めます。OFFにした機能は、その人の画面に出なくなります。変更はすぐに保存されます。</p></div></header>
+ <div class="tabs" role="tablist" aria-label="設定の種類" id="flTabs"></div>
+ <section class="card" id="flPanel" role="tabpanel"></section>
+ <p class="sr" id="flLive" role="status" aria-live="polite"></p>
+</main></div>
+<div id="toast"></div>
+<script src="ganki-local-data.js"></script>
+<script src="ganki-data.js"></script>
+<script src="ganki-dropbox.js"></script>
+<script src="ganki-jonojo.js"></script>
+<script>
+(function(){
+GK.shell('settings.html');
+/* 自分の表示 (じょのじょ, 2026-10-19): everyone may open #tab-me for their own display settings, even without 「機能の設定」 */
+if(location.hash==='#tab-me'&&!GK.can('settings')&&GK.jono){
+ var mm=document.getElementById('main');if(mm)mm.innerHTML='<header class="head"><div><h1>自分の表示</h1><p class="sub">あなたの画面だけに効く表示の設定です。変更はすぐに保存されます。</p></div></header><section class="card" id="flPanel">'+GK.jono.prefsHtml('page')+'</section>';
+ try{document.title='自分の表示'}catch(x){}
+ window.GKrefresh=function(){var pn=document.getElementById('flPanel');if(pn)pn.innerHTML=GK.jono.prefsHtml('page')};
+ return;
+}
+if(GK.pageGate('settings'))return; /* only the people who can open 機能の設定 (管理者 by default) */
+var e=GK.esc,$=function(s){return document.querySelector(s)};
+var TABS=[['role','役割ごと'],['person','人ごと'],['log','変更の記録'],['me','自分の表示']];
+/* Dropbox (2026-10-19, ganki-dropbox.js): connecting, the folder rules and the unmatched folders — only with 「書類（Dropbox）」 ON */
+function dbxTab(){return !!(GK.dbx&&GK.can('doc.dbx'))}
+function tabs(){var T=GK.jono?TABS:TABS.filter(function(x){return x[0]!=='me'});return dbxTab()?T.concat([['dbx','Dropbox']]):T}
+var OPEN_KEY='ganki-flags-open';
+var S={tab:'role',q:'',open:GK.store.get(OPEN_KEY)||{},pid:'',msg:''};
+if(!S.open||typeof S.open!=='object')S.open={};
+(function(){var m=/^tab-(role|person|log|dbx|me)$/.exec(location.hash.slice(1));if(m&&(m[1]!=='dbx'||dbxTab())&&(m[1]!=='me'||GK.jono))S.tab=m[1]})();
+function say(t){var l=$('#flLive');if(!l)return;l.textContent='';setTimeout(function(){l.textContent=t},30)}
+function F(k){return GK.feature(k)}
+function nm(k){var f=F(k);return f?f.n:k}
+function quoteList(keys){return keys.map(function(k){return '「'+nm(k)+'」'}).join('・')}
+function inGroup(g){return GK.FEATURES.filter(function(f){return f.g===g})}
+function match(f){return GK.hit(S.q,[f.n])}
+function people(){return GK.staffList()}
+function person(){var p=GK.staffById(S.pid);if(!p){p=people()[0]||null;S.pid=p?p.id:''}return p}
+/* why a feature is OFF although its own switch is ON: the first thing it needs that is OFF */
+function blockers(can,k){return GK.needsOf(k).filter(function(d){return !can(d)})}
+
+/* ---------- 役割ごと ---------- */
+function roleCell(f,r){
+ if(GK.isLocked(f.key,r))return '<td data-label="'+e(r)+'"><span class="sw-lock" aria-label="'+e(r+'：'+f.n+' は常にON（変えられません）')+'">常にON</span></td>';
+ var own=GK.roleOwn(r,f.key),eff=GK.roleCan(r,f.key),why='';
+ if(own&&!eff){var b=blockers(function(x){return GK.roleCan(r,x)},f.key);why='<span class="sw-why">'+e(quoteList(b.slice(0,1)))+'がOFF</span>'}
+ return '<td data-label="'+e(r)+'"><span><button type="button" class="sw" role="switch" aria-checked="'+eff+'" data-sw="'+e(f.key)+'" data-role="'+e(r)+'" aria-label="'+e(r+'：'+f.n)+'"><span class="sw-t" aria-hidden="true"></span><span class="sw-v" aria-hidden="true">'+(eff?'ON':'OFF')+'</span></button>'+why+'</span></td>';
+}
+function panelRole(){
+ var h='<div class="fl-top"><input class="search" type="search" id="fq" placeholder="機能の名前で探す（例：電話、送金）" aria-label="機能を名前で探す" value="'+e(S.q)+'" autocomplete="off"><span class="fl-note" id="fqn"></span></div>';
+ h+='<p class="fl-msg" id="flMsg" role="alert">'+e(S.msg)+'</p>';
+ h+='<p class="fl-note">'+GK.ROLES.map(function(r){var n=people().filter(function(p){return GK.roleOf(p.id)===r}).map(function(p){return p.n}).join('・');return '<b>'+e(r)+'</b>：'+e(GK.ROLE_NOTE[r])+(n?'（'+e(n)+'）':'')}).join('<br>')+'</p>';
+ var ex=people().filter(function(p){return exCount(p.id)});
+ if(ex.length)h+='<p class="fl-note">人ごとの例外があります：'+ex.map(function(p){return e(p.n)+' さん（'+exCount(p.id)+'件）'}).join('、')+' <button type="button" class="link" data-tab="person">人ごとで見る</button></p>';
+ h+='<div class="tbl-wrap"><table class="tbl ftbl"><colgroup><col class="c-name">'+GK.ROLES.map(function(){return '<col class="c-role">'}).join('')+'</colgroup><thead><tr><th scope="col">機能</th>'+GK.ROLES.map(function(r){return '<th scope="col">'+e(r)+'</th>'}).join('')+'</tr></thead>';
+ var shown=0;
+ GK.FEATURE_GROUPS.forEach(function(g){
+  var all=inGroup(g),fs=all.filter(match);if(!fs.length)return;shown+=fs.length;
+  var open=S.q?true:!!S.open[g];
+  h+='<tbody><tr class="grp"><th scope="rowgroup"><button type="button" class="grp-btn" data-grp="'+e(g)+'" aria-expanded="'+open+'"><span class="chev" aria-hidden="true">›</span>'+e(g)+' <span class="cap">'+(S.q?fs.length+' / ':'')+all.length+'件</span></button></th>'+
+   GK.ROLES.map(function(r){var on=all.filter(function(f){return GK.roleCan(r,f.key)}).length,full=on===all.length,changeable=all.some(function(f){return !GK.isLocked(f.key,r)});
+    return '<td data-label="'+e(r)+'"><span class="grp-cell"><span>ON '+on+' / '+all.length+'</span>'+(changeable?'<button type="button" class="bulk" data-bulk="'+e(g)+'" data-role="'+e(r)+'" data-v="'+(full?'off':'on')+'" aria-label="'+e(r+'：'+g+'をまとめて'+(full?'OFF':'ON'))+'">まとめて'+(full?'OFF':'ON')+'</button>':'')+'</span></td>'}).join('')+'</tr>';
+  if(open)h+=fs.map(function(f){
+   var need=f.dep.length?'<span class="fn-need">必要：'+e(quoteList(f.dep))+'</span>':'';
+   return '<tr data-key="'+e(f.key)+'"><th scope="row" class="fn"><span class="fn-n">'+GK.hl(f.n,S.q)+'</span><span class="fn-d">'+e(f.d)+'</span>'+need+'</th>'+GK.ROLES.map(function(r){return roleCell(f,r)}).join('')+'</tr>';
+  }).join('');
+  h+='</tbody>';
+ });
+ h+='</table></div>';
+ if(!shown)h+='<p class="empty">「'+e(S.q)+'」に一致する機能はありません。</p>';
+ return h;
+}
+
+/* ---------- 人ごと ---------- */
+function exKeys(id){var f=GK.db.flags&&GK.db.flags.people&&GK.db.flags.people[id];return f?Object.keys(f).filter(function(k){return typeof f[k]==='boolean'&&F(k)}):[]}
+function exCount(id){return exKeys(id).length}
+function panelPerson(){
+ var p=person();if(!p)return '<p class="empty">担当者が登録されていません。</p>';
+ var role=GK.roleOf(p.id),n=exCount(p.id);
+ var h='<div class="ppick"><label for="pSel"><b>人を選ぶ</b></label><select id="pSel">'+people().map(function(x){return '<option value="'+e(x.id)+'"'+(x.id===p.id?' selected':'')+'>'+e(x.n+'（'+GK.roleOf(x.id)+'）')+(exCount(x.id)?' · 例外 '+exCount(x.id)+'件':'')+'</option>'}).join('')+'</select>'+
+  (n?'<button type="button" class="btn" id="clearEx">例外をすべて外す（'+n+'件）</button>':'')+'</div>';
+ h+='<p class="fl-note">'+e(p.n)+' さんは<b>'+e(role)+'</b>です。ふだんは「役割どおり」のままにして、この人だけ違うときに ON / OFF を選びます。</p>';
+ h+='<div class="fl-top"><input class="search" type="search" id="fq" placeholder="機能の名前で探す（例：電話、送金）" aria-label="機能を名前で探す" value="'+e(S.q)+'" autocomplete="off"></div>';
+ h+='<p class="fl-msg" id="flMsg" role="alert">'+e(S.msg)+'</p><div id="pAsk"></div>';
+ var shown=0;
+ GK.FEATURE_GROUPS.forEach(function(g){
+  var all=inGroup(g),fs=all.filter(match);if(!fs.length)return;shown+=fs.length;
+  var open=S.q?true:!!S.open[g],nx=all.filter(function(f){return GK.personOwn(p.id,f.key)!==null}).length;
+  h+='<div class="pgrp"><button type="button" class="grp-btn" data-grp="'+e(g)+'" aria-expanded="'+open+'"><span class="chev" aria-hidden="true">›</span>'+e(g)+' <span class="cap">'+all.length+'件'+(nx?' · 例外 '+nx+'件':'')+'</span></button>';
+  if(open)h+='<ul class="prows">'+fs.map(function(f){return personRow(p,f)}).join('')+'</ul>';
+  h+='</div>';
+ });
+ if(!shown)h+='<p class="empty">「'+e(S.q)+'」に一致する機能はありません。</p>';
+ return h;
+}
+function personRow(p,f){
+ var pv=GK.personOwn(p.id,f.key),rv=GK.roleOwn(GK.roleOf(p.id),f.key),eff=GK.can(f.key,p.id);
+ var why='';if(!eff){var own=pv===null?rv:pv;if(own){var b=blockers(function(x){return GK.can(x,p.id)},f.key);why='<span class="why">'+e(quoteList(b.slice(0,1)))+'がOFFのため</span>'}}
+ var opt=function(v,label){var on=v==='role'?pv===null:v==='on'?pv===true:pv===false;return '<button type="button" data-pv="'+v+'" data-key="'+e(f.key)+'" aria-pressed="'+on+'">'+label+'</button>'};
+ return '<li class="prow'+(pv!==null?' is-ex':'')+'" data-key="'+e(f.key)+'"><div><span class="fn-n">'+GK.hl(f.n,S.q)+'</span><span class="fn-d">'+e(f.d)+'</span>'+(f.dep.length?'<span class="fn-need">必要：'+e(quoteList(f.dep))+'</span>':'')+'</div>'+
+  '<div class="seg3" role="group" aria-label="'+e(p.n+' さん：'+f.n)+'">'+opt('role','役割どおり（今は'+(rv?'ON':'OFF')+'）')+opt('on','ON')+opt('off','OFF')+'</div>'+
+  '<div class="peff">結果：'+(eff?'<b class="ok">使える</b>':'<b class="ng">使えない</b>')+why+'</div></li>';
+}
+
+/* ---------- 変更の記録 ---------- */
+function panelLog(){
+ var L=(GK.db.log||[]).filter(function(x){return x&&String(x.t||'').indexOf('機能の設定：')===0}).slice(0,60);
+ var h='<h2>変更の記録</h2><p class="cap">この画面での変更を、新しい順に表示します（だれが・いつ・何を）。</p>';
+ if(!L.length)return h+'<p class="empty">まだ変更はありません。</p>';
+ return h+'<ul class="rows lrows">'+L.map(function(x){return '<li><span class="main-t">'+e(String(x.t).slice(6))+'<div class="sub">'+e(x.who||'')+'</div></span><span class="end">'+e(GK.sd(String(x.at||'').slice(0,10)))+' '+e(String(x.at||'').slice(11,16))+'</span></li>'}).join('')+'</ul>';
+}
+
+/* ---------- render ---------- */
+function render(){
+ if(S.tab==='dbx'&&!dbxTab())S.tab='role';
+ $('#flTabs').innerHTML=tabs().map(function(t){var on=t[0]===S.tab;return '<button type="button" role="tab" id="tab-'+t[0]+'" aria-controls="flPanel" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" data-tab="'+t[0]+'">'+t[1]+'</button>'}).join('');
+ $('#flPanel').setAttribute('aria-labelledby','tab-'+S.tab);
+ $('#flPanel').innerHTML=S.tab==='person'?panelPerson():S.tab==='log'?panelLog():S.tab==='dbx'?GK.dbx.settingsHtml():S.tab==='me'?GK.jono.prefsHtml('page'):panelRole();
+ var n=$('#fqn');if(n&&S.q){var c=GK.FEATURES.filter(match).length;n.textContent=c+'件';}
+}
+function keep(fn){var a=document.activeElement,id=a&&a.id,sel=null,ds=null;try{if(a&&typeof a.selectionStart==='number')sel=[a.selectionStart,a.selectionEnd]}catch(x){}
+ if(a&&a.getAttribute&&!id){ds=['data-sw','data-role','data-bulk','data-grp','data-pv','data-key'].map(function(k){return [k,a.getAttribute(k)]}).filter(function(x){return x[1]!=null})}
+ fn();
+ var n=id?document.getElementById(id):null;
+ if(!n&&ds&&ds.length){try{n=document.querySelector(ds.map(function(x){return '['+x[0]+'="'+String(x[1]).replace(/["\\]/g,'\\$&')+'"]'}).join(''))}catch(x){n=null}}
+ if(n&&n!==a&&n.focus){try{n.focus();if(sel&&n.setSelectionRange)n.setSelectionRange(sel[0],sel[1])}catch(x){}}
+}
+function setTab(k){S.tab=k;S.msg='';closeAsk();try{history.replaceState(null,'','#tab-'+k)}catch(x){}render();var b=document.getElementById('tab-'+k);if(b)b.focus()}
+
+/* ---------- saving ---------- */
+function apply(changes,text){
+ var r=GK.flagSet(changes,text);
+ if(!r.ok){if(r.msg){S.msg=r.msg;keep(render);GK.toast('変更できませんでした（「機能の設定」を開ける人がいなくなるため）');say(r.msg)}return false}
+ S.msg='';keep(render);
+ GK.toast(text,function(){var u=r.undo();keep(render);GK.toast(u&&u.ok===false?u.msg:'元に戻しました')});
+ return true;
+}
+/* the in-page question (confirm() does not work in the viewer): a row under the switch / at the top of the list */
+var ASK=null;
+function closeAsk(){if(!ASK)return;var a=ASK;ASK=null;try{a.el.remove()}catch(x){}if(a.ret&&document.body.contains(a.ret))try{a.ret.focus()}catch(x){}}
+function ask(anchor,msg,yes,yesCls,onYes){
+ closeAsk();
+ var host,el=document.createElement('div');el.className='fl-ask';el.setAttribute('role','alertdialog');el.setAttribute('aria-label','確認');
+ el.innerHTML='<p>'+e(msg)+'</p><span class="acts"><button type="button" class="btn '+yesCls+'" data-ask="yes">'+e(yes)+'</button><button type="button" class="btn" data-ask="no">やめる</button></span>';
+ var tr=anchor&&anchor.closest?anchor.closest('tr'):null;
+ if(tr){host=document.createElement('tr');host.className='ask';var td=document.createElement('td');td.colSpan=GK.ROLES.length+1;td.appendChild(el);host.appendChild(td);tr.insertAdjacentElement('afterend',host)}
+ else{var li=anchor&&anchor.closest?anchor.closest('li'):null;host=el;if(li)li.insertAdjacentElement('beforeend',el);else{var pa=$('#pAsk')||$('#flPanel');pa.insertAdjacentElement('afterbegin',el)}}
+ ASK={el:host,ret:anchor,yes:onYes};
+ var b=el.querySelector('[data-ask="no"]');if(b)b.focus();
+}
+document.addEventListener('click',function(ev){
+ var a=ev.target.closest&&ev.target.closest('[data-ask]');if(!a||!ASK)return;
+ /* back to the switch first (closeAsk focuses it), then save: the redraw keeps the focus on the same switch */
+ var y=a.getAttribute('data-ask')==='yes',fn=ASK.yes;closeAsk();if(y)fn();
+});
+
+/* role switch */
+function roleToggle(btn){
+ var k=btn.getAttribute('data-sw'),r=btn.getAttribute('data-role'),f=F(k);if(!f||GK.isLocked(k,r))return;
+ var eff=GK.roleCan(r,k);
+ if(eff){
+  var users=GK.usersOf(k).filter(function(u){return GK.roleCan(r,u)});
+  var go=function(){apply([{scope:'role',who:r,key:k,val:false}],r+'の「'+f.n+'」をOFFにしました'+(users.length?'（'+quoteList(users)+'も止まります）':''))};
+  if(users.length)return ask(btn,r+'の「'+f.n+'」をOFFにすると、次の機能も使えなくなります：'+quoteList(users)+'。OFFにしますか？','OFFにする','danger',go);
+  return go();
+ }
+ var needs=GK.needsOf(k).filter(function(d){return !GK.roleOwn(r,d)});
+ var ch=[{scope:'role',who:r,key:k,val:true}];
+ if(needs.length)return ask(btn,'「'+f.n+'」を使うには '+quoteList(needs)+' も必要です（'+r+'では今OFF）。いっしょにONにしますか？','いっしょにONにする','primary',function(){
+  apply(ch.concat(needs.map(function(d){return {scope:'role',who:r,key:d,val:true}})),r+'の「'+f.n+'」と'+quoteList(needs)+'をONにしました');
+ });
+ apply(ch,r+'の「'+f.n+'」をONにしました');
+}
+/* a whole group for one role */
+function bulk(btn){
+ var g=btn.getAttribute('data-bulk'),r=btn.getAttribute('data-role'),on=btn.getAttribute('data-v')==='on';
+ var keys=inGroup(g).map(function(f){return f.key}).filter(function(k){return !GK.isLocked(k,r)});
+ if(!on){
+  var ch=keys.filter(function(k){return GK.roleOwn(r,k)}).map(function(k){return {scope:'role',who:r,key:k,val:false}});
+  var out=[];keys.forEach(function(k){GK.usersOf(k).forEach(function(u){if(keys.indexOf(u)<0&&out.indexOf(u)<0&&GK.roleCan(r,u))out.push(u)})});
+  var go=function(){apply(ch,r+'の「'+g+'」をまとめてOFFにしました（'+ch.length+'件）')};
+  if(!ch.length)return;
+  if(out.length)return ask(btn,r+'の「'+g+'」をまとめてOFFにすると、ほかのグループの '+quoteList(out)+' も使えなくなります。OFFにしますか？','まとめてOFFにする','danger',go);
+  return go();
+ }
+ var ch2=keys.filter(function(k){return !GK.roleOwn(r,k)}).map(function(k){return {scope:'role',who:r,key:k,val:true}});
+ var need=[];keys.forEach(function(k){GK.needsOf(k).forEach(function(d){if(keys.indexOf(d)<0&&need.indexOf(d)<0&&!GK.roleOwn(r,d))need.push(d)})});
+ var text=r+'の「'+g+'」をまとめてONにしました（'+ch2.length+'件）';
+ if(need.length)return ask(btn,'このグループの機能には、ほかのグループの '+quoteList(need)+' も必要です（'+r+'では今OFF）。いっしょにONにしますか？','いっしょにONにする','primary',function(){
+  apply(ch2.concat(need.map(function(d){return {scope:'role',who:r,key:d,val:true}})),text.replace('しました（','しました（'+quoteList(need)+'も・'));
+ });
+ if(ch2.length)apply(ch2,text);
+}
+/* person: role / on / off */
+function personSet(btn){
+ var p=person();if(!p)return;
+ var k=btn.getAttribute('data-key'),v=btn.getAttribute('data-pv'),f=F(k);if(!f)return;
+ var cur=GK.personOwn(p.id,k),val=v==='role'?null:v==='on';
+ if(cur===val)return;
+ var who=p.n+' さん',label=v==='role'?'を役割どおりに戻しました':v==='on'?'をONにしました':'をOFFにしました';
+ var c=[{scope:'person',who:p.id,key:k,val:val}];
+ /* what changes for this person: compute with the new value */
+ var fl={roles:(GK.db.flags||{}).roles||{},people:JSON.parse(JSON.stringify((GK.db.flags||{}).people||{}))};
+ var pp=fl.people[p.id]=fl.people[p.id]||{};if(val===null)delete pp[k];else pp[k]=val;
+ var nowOn=GK.canWith(fl,k,p.id);
+ if(!nowOn&&GK.can(k,p.id)){
+  var users=GK.usersOf(k).filter(function(u){return GK.can(u,p.id)});
+  var go=function(){apply(c,who+'の「'+f.n+'」'+label+(users.length?'（'+quoteList(users)+'も止まります）':''))};
+  if(users.length)return ask(btn,who+'の「'+f.n+'」が使えなくなると、'+quoteList(users)+' も使えなくなります。変えますか？','変える','danger',go);
+  return go();
+ }
+ var own=val===null?GK.roleOwn(GK.roleOf(p.id),k):val;
+ if(own&&!nowOn){
+  var needs=GK.needsOf(k).filter(function(d){return !GK.canWith(fl,d,p.id)});
+  return ask(btn,who+'が「'+f.n+'」を使うには '+quoteList(needs)+' も必要です（今は使えない設定）。'+who+'だけ、いっしょにONにしますか？','いっしょにONにする','primary',function(){
+   apply(c.concat(needs.map(function(d){return {scope:'person',who:p.id,key:d,val:true}})),who+'の「'+f.n+'」'+label+'（'+quoteList(needs)+'もON）');
+  });
+ }
+ apply(c,who+'の「'+f.n+'」'+label);
+}
+function clearEx(btn){
+ var p=person();if(!p)return;var ks=exKeys(p.id);if(!ks.length)return;
+ ask(btn,p.n+' さんの例外（'+ks.length+'件）をすべて外して、役割（'+GK.roleOf(p.id)+'）どおりに戻しますか？','すべて外す','danger',function(){
+  apply(ks.map(function(k){return {scope:'person',who:p.id,key:k,val:null}}),p.n+' さんの例外をすべて外しました（'+ks.length+'件）');
+ });
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(ev){
+ var t=ev.target.closest&&ev.target.closest('button');if(!t||t.closest('#side,#topbar,#toast,.gkc-wrap,.fl-ask'))return;
+ var d=t.dataset||{};
+ if(d.tab){setTab(d.tab);return}
+ if(d.grp){S.open[d.grp]=!S.open[d.grp];GK.store.set(OPEN_KEY,S.open);closeAsk();keep(render);return}
+ if(d.sw){S.msg='';roleToggle(t);return}
+ if(d.bulk){S.msg='';bulk(t);return}
+ if(d.pv){S.msg='';personSet(t);return}
+ if(t.id==='clearEx'){S.msg='';clearEx(t);return}
+});
+document.addEventListener('change',function(ev){if(ev.target.id==='pSel'){S.pid=ev.target.value;S.msg='';closeAsk();keep(render)}});
+document.addEventListener('input',function(ev){
+ if(ev.target.id!=='fq')return;S.q=ev.target.value;if(ev.isComposing)return;closeAsk();keep(render);
+});
+document.addEventListener('compositionend',function(ev){if(ev.target.id==='fq'){S.q=ev.target.value;keep(render)}});
+document.addEventListener('keydown',function(ev){
+ var t=ev.target;
+ if(ev.key==='Escape'&&ASK){ev.preventDefault();closeAsk();return}
+ if(t&&t.getAttribute&&t.getAttribute('role')==='tab'){
+  var TB=tabs(),i=TB.map(function(x){return x[0]}).indexOf(t.getAttribute('data-tab')),n=TB.length,j=-1;
+  if(ev.key==='ArrowRight')j=(i+1)%n;else if(ev.key==='ArrowLeft')j=(i-1+n)%n;else if(ev.key==='Home')j=0;else if(ev.key==='End')j=n-1;
+  if(j>=0){ev.preventDefault();setTab(TB[j][0])}
+ }
+});
+/* another tab saved: redraw (not while a question is open: the answer reads the newest settings anyway) */
+window.GKrefresh=function(){if(ASK)return;try{keep(render)}catch(err){if(window.console)console.error(err)}};
+render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>経理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="ganki-base.css">
+<style>
+/* 経理 (accounting.html, added 2026-10-19): a simplified copy of production's 経理 page (ダッシュボード / 入出金管理 / 売上・利益)
+   plus 「賃貸管理部からの引継ぎ」. Only what is needed to show the rental handover in context. */
+.ac select{border:1px solid var(--input);border-radius:8px;padding:7px 10px;background:var(--surface);min-height:40px;font-weight:500;max-width:100%}
+/* the month picker: ganki-base.css .gk-mp (GK.monthPicker) */
+.ac-years{margin:0 0 4px}
+.ac-sum{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.ac-sum .stat .v,.ac-big .stat .v{font-size:21px;overflow-wrap:anywhere}
+.ac .s2{display:block;font-size:12px;color:var(--muted)}
+.ac-in{color:var(--ok)}.ac-out{color:var(--danger)}
+.ac [role="tab"]{min-height:40px}
+.ac [role="tab"] .badge{font-size:11px;background:var(--danger);color:#fff;border-radius:999px;padding:0 7px;margin-left:6px}
+#acPanel:focus{outline:none}#acPanel:focus-visible{outline:2px solid var(--primary)}
+.ac-sec{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ac-sec+.ac-sec{border-top:1px solid var(--line);padding-top:14px}
+.ac-sec h3{font-size:14px}
+.ac-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ac-banner{padding:10px 14px;border-radius:8px;font-size:13px}
+.ac-banner.info{background:var(--info-soft);color:var(--info)}.ac-banner.ok{background:var(--ok-soft);color:var(--ok)}.ac-banner.warn{background:var(--warn-soft);color:var(--warn)}.ac-banner.danger{background:var(--danger-soft);color:var(--danger)}
+.ac-auto{border:1px solid #c9d3f7;border-radius:10px;overflow:hidden}
+.ac-auto-h{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--primary-soft);border-bottom:1px solid #c9d3f7}
+.ac-auto-h h3{font-size:15px}
+.ac-auto-h dl{display:flex;gap:14px;margin:0;flex-wrap:wrap}.ac-auto-h dt{font-size:11.5px;color:var(--muted)}.ac-auto-h dd{margin:0;font-weight:700}
+.ac-auto .tbl-wrap{border:0;border-radius:0}
+.ac-tag{display:inline-block;font-size:11px;padding:0 7px;border-radius:999px;background:var(--info-soft);color:var(--info);white-space:nowrap;line-height:1.8}
+.ac-kv{grid-template-columns:9em minmax(0,1fr)}
+.ac-note{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:13.5px}
+.ac-zg{width:100%;max-width:100%;min-height:130px;white-space:pre;overflow:auto;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:12px;line-height:1.5;border:1px solid var(--input);border-radius:8px;padding:8px;background:var(--surface);resize:vertical}
+.ac-st{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12.5px;background:var(--surface-2);border-radius:8px;padding:8px 10px;margin:4px 0 0}
+.ac-form textarea{border:1px solid var(--input);border-radius:8px;padding:8px 10px;width:100%;min-height:80px;background:var(--surface);resize:vertical}
+.ac-form{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:8px;background:var(--warn-soft);border:1px solid #e9cf96}
+.ac-hist li .main-t{overflow-wrap:anywhere}
+.ac-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ac .search{min-height:40px}
+@media (max-width:640px){
+ .ac .btn,.ac .act,.ac .seg button,.ac [role="tab"],.ac select,.ac .search,.ac .link{min-height:44px}
+ .ac .act{display:inline-flex;align-items:center}
+ .ac-btns .btn{flex:1 1 auto;justify-content:center}
+ .ac-kv{grid-template-columns:minmax(0,1fr)}
+ .ac-hist li{flex-wrap:wrap}.ac-hist .end{margin-left:0;text-align:left;white-space:normal}
+}
+</style></head>
+<body><div class="topbar" id="topbar"></div><div class="app"><aside class="side" id="side"></aside><main class="main ac" id="main">
+ <header class="head">
+  <div><h1>経理</h1><p class="sub" id="acPeriod"></p></div>
+  <div class="head-actions gk-mpw ac-month"><div class="gk-mp" role="group" aria-label="表示する月"><button type="button" class="gk-mp-step" id="acMonthPrev" data-mp="prev" data-mp-for="acMonth" aria-label="前の月">‹<span class="gk-mp-t"> 前の月</span></button><label class="sr" for="acMonth">表示する月</label><select id="acMonth"></select><button type="button" class="gk-mp-step" id="acMonthNext" data-mp="next" data-mp-for="acMonth" aria-label="次の月"><span class="gk-mp-t">次の月 </span>›</button><button type="button" class="gk-mp-step gk-mp-now" id="acMonthNow" data-mp="now" data-mp-for="acMonth">今月</button></div><p class="gk-mp-hint" id="acMonthHint" hidden></p></div>
+ </header>
+ <div class="stats ac-sum" id="acSum"></div>
+ <div class="tabs" id="acTabs" role="tablist" aria-label="経理の画面"></div>
+ <section class="card" id="acPanel" role="tabpanel" tabindex="0"></section>
+ <p class="sr" id="acLive" role="status" aria-live="polite"></p>
+</main></div>
+<div id="toast"></div>
+<script src="ganki-local-data.js"></script>
+<script src="ganki-data.js"></script>
+<script src="ganki-money.js"></script>
+<script src="ganki-sales.js"></script>
+<script src="ganki-acct.js"></script>
+<script src="ganki-jonojo.js"></script>
+<script>
+(function(){
+GK.shell('accounting.html');
+if(GK.pageGate('page.acct'))return; /* 機能の設定: 経理 is OFF for the current person (担当者 by default) */
+var X=GK.money,A=GK.acct,e=GK.esc,yen=GK.yen,$=function(s){return document.querySelector(s)};
+var TABS=[['dashboard','ダッシュボード'],['cashflow','入出金管理'],['sales','売上・利益'],['handover','賃貸管理部からの引継ぎ']],TAB_KEY='ganki-acct-tab';
+var S={m:X.cur(),tab:'dashboard',open:null,q:'',rooms:false,st:{},onlyBad:false,returning:null,reason:{},unrecv:null};
+try{var t0=localStorage.getItem(TAB_KEY);if(TABS.some(function(t){return t[0]===t0}))S.tab=t0}catch(x){}
+function readHash(){
+ var h=location.hash.slice(1),m=/^tab-(dashboard|cashflow|sales|handover)(?:-(\d{4}-\d{2}))?$/.exec(h);
+ if(m){S.tab=m[1];S.open=null;if(m[2]&&A.monthList().indexOf(m[2])>=0)S.m=m[2];return}
+ var sid=GK.hash('sub');if(sid){var s=A.sub(sid);if(s){S.tab='handover';S.open=s.id;S.m=s.m}}
+}
+readHash();
+function say(t){var l=$('#acLive');if(!l)return;l.textContent='';setTimeout(function(){l.textContent=t},30)}
+function mon(m){return X.monY(m||S.m)}
+function atText(at){at=String(at||'');return GK.sd(at.slice(0,10))+(at.length>10?' '+at.slice(11,16):'')}
+function pill(st){return '<span class="pill '+(A.CLS[st]||'')+'">'+e(A.LABEL[st]||st)+'</span>'}
+function signed(x){var v=x.neg?-x.amount:x.amount;return (x.type==='in'?'+':'−')+yen(v).replace('−','')}
+function copy(text,btn,el){
+ var ok=function(){if(btn){var o=btn.textContent;btn.textContent='コピーしました';setTimeout(function(){if(btn.isConnected)btn.textContent=o},2000)}say('コピーしました')};
+ var ng=function(){try{if(el&&el.select)el.select()}catch(x){}GK.toast('選びました。Ctrl+C（スマホは長押し）でコピーしてください')};
+ try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(ok,ng);else ng()}catch(x){ng()}
+}
+
+/* ---------- header: month, the 4 summary cards (like production), tabs ---------- */
+function renderHead(){
+ var list=A.monthList();if(list.indexOf(S.m)<0)list.push(S.m);list.sort().reverse();
+ /* 月の選び方 (GK.monthPicker): months with cashflows or a handover, to this month */
+ GK.monthPicker({id:'acMonth',months:list,value:S.m,hint:A.monthHint()});
+ $('#acPeriod').textContent=S.m.slice(0,4)+'年'+(+S.m.slice(5))+'月';
+ var s=A.summary(S.m);
+ $('#acSum').innerHTML='<div class="stat ok"><span class="k">入金予定</span><span class="v">'+yen(s.inc)+'</span></div><div class="stat danger"><span class="k">支払予定</span><span class="v">'+yen(s.exp)+'</span></div>'+
+  '<div class="stat info"><span class="k">差額（利益）</span><span class="v">'+yen(s.diff)+'</span></div><div class="stat warn"><span class="k">未処理</span><span class="v">'+(s.unrec+s.unpaid)+'<small>件</small></span><span class="s2">未消込: '+s.unrec+' / 未払: '+s.unpaid+'</span></div>';
+ var w=s.waiting;
+ $('#acTabs').innerHTML=TABS.map(function(t){var on=t[0]===S.tab;return '<button type="button" role="tab" id="tab-'+t[0]+'" aria-controls="acPanel" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" data-tab="'+t[0]+'">'+t[1]+(t[0]==='handover'&&w?'<span class="badge" aria-label="確認待ち '+w+'件">'+w+'</span>':'')+'</button>'}).join('');
+ $('#acPanel').setAttribute('aria-labelledby','tab-'+S.tab);
+}
+
+/* ---------- ダッシュボード ---------- */
+function panelDash(){
+ var s=A.summary(S.m),h='<h2>今月の概要（'+e(mon())+'）</h2>';
+ h+='<div class="stats ac-big"><div class="stat"><span class="k">入金予定</span><span class="v ac-in">'+yen(s.inc)+'</span></div><div class="stat"><span class="k">支払予定</span><span class="v ac-out">'+yen(s.exp)+'</span></div><div class="stat"><span class="k">差額（利益）</span><span class="v '+(s.diff>=0?'ac-in':'ac-out')+'">'+yen(s.diff)+'</span></div></div>';
+ h+='<div class="ac-sec"><h3>賃貸管理部の売上・費用（'+e(mon())+'分）</h3>';
+ if(s.rental){var T=s.rental.totals,r=s.rental.sub;
+  h+='<div class="stats"><div class="stat info"><span class="k">売上高</span><span class="v">'+yen(T.sales)+'</span></div><div class="stat"><span class="k">費用</span><span class="v">'+yen(T.cost)+'</span></div><div class="stat ok"><span class="k">粗利</span><span class="v">'+yen(T.gross)+'</span></div></div>'+
+   '<p class="cap">第'+r.ver+'版を受領（'+e(atText(r.act.at))+' '+e(r.act.by)+'）。入出金管理に「'+e(A.MEMO)+'」の行が '+r.lines.length+'件 入っています。'+(r.sample?'（見本）':'')+'</p>'+
+   '<div class="ac-btns"><button type="button" class="btn" data-sub="'+e(r.id)+'">引継ぎの内容を見る</button></div>';
+ }else{var st=s.status;
+  h+='<p class="note">'+e(mon())+'分はまだ受領していません（'+e(st.label+(st.ver?'・第'+st.ver+'版':''))+'）。受領すると、ここと入出金管理・売上・利益に入ります。</p>'+
+   (st.sub?'<div class="ac-btns"><button type="button" class="btn" data-sub="'+e(st.sub.id)+'">引継ぎを開く</button></div>':'');
+ }
+ h+='</div>';
+ h+='<div class="ac-sec"><h3>要対応項目</h3><div class="stats"><div class="stat'+(s.unrec?' warn':'')+'"><span class="k">未消込</span><span class="v">'+s.unrec+'<small>件</small></span></div><div class="stat'+(s.unpaid?' warn':'')+'"><span class="k">未払</span><span class="v">'+s.unpaid+'<small>件</small></span></div>'+
+  '<button type="button" class="stat'+(s.waiting?' info':'')+'" data-tab="handover"><span class="k">引継ぎの確認待ち</span><span class="v">'+s.waiting+'<small>件</small></span><span class="s2">賃貸管理部から</span></button></div></div>';
+ var ms=[X.addMonth(X.cur(),-1),X.cur()];
+ h+='<div class="ac-sec"><h3>賃貸管理部からの引継ぎ</h3><ul class="rows">'+ms.map(function(m){var st=A.status(m);return '<li><span class="main-t">'+e(mon(m))+'分 '+pill(st.state)+(st.ver?' <span class="cap">第'+st.ver+'版</span>':'')+'</span><span class="end">'+(st.sub?'<button type="button" class="act" data-sub="'+e(st.sub.id)+'">開く</button>':'<span class="cap">まだ届いていません</span>')+'</span></li>'}).join('')+'</ul></div>';
+ return h;
+}
+
+/* ---------- 入出金管理 ---------- */
+function entryRow(x,auto){
+ return '<tr><td data-label="種別"><span class="pill '+(x.type==='in'?'ok':'')+'">'+(x.type==='in'?'入金':'支払')+'</span></td><td data-label="科目"><b>'+e(x.cat)+'</b>'+(auto?' <span class="ac-tag">'+e(A.MEMO)+'</span>':'')+'</td>'+
+  '<td data-label="案件">'+e(x.project)+'</td><td data-label="取引先">'+e(x.partner||'-')+'</td><td data-label="金額" class="num '+(x.type==='in'?'ac-in':'ac-out')+'"><b>'+signed(x)+'</b></td>'+
+  '<td data-label="予定日">'+e(GK.jp(x.due))+'</td><td data-label="状態">'+(x.paid?'<span class="pill ok">済</span>':'<span class="pill warn">未払</span>')+(x.recon?' <span class="pill">消込済</span>':'')+'</td></tr>';
+}
+var HEAD='<thead><tr><th>種別</th><th>科目</th><th>案件</th><th>取引先</th><th class="num">金額</th><th>予定日</th><th>状態</th></tr></thead>';
+function panelCash(){
+ var E=A.entries(S.m),gen=E.filter(function(x){return x.src!=='rental'}),ren=E.filter(function(x){return x.src==='rental'}),h='<h2>入出金管理（'+e(mon())+'）</h2>';
+ h+='<div class="ac-sec"><h3>入出金一覧（一般）</h3>'+(gen.length?'<div class="tbl-wrap"><table class="tbl cards">'+HEAD+'<tbody>'+gen.map(function(x){return entryRow(x,false)}).join('')+'</tbody></table></div>':'<p class="empty">データがありません</p>')+
+  '<p class="cap">'+(GK.LOCAL?'会社全体の入出金は、この検証用のデータには入っていません。':'会社全体の入出金の見本です（架空）。')+'本番の「入出金を追加」「編集」はこの画面にはありません。</p></div>';
+ var inc=0,exp=0;ren.forEach(function(x){var v=x.neg?-x.amount:x.amount;if(x.type==='in')inc+=v;else exp+=v});
+ h+='<div class="ac-sec"><div class="ac-auto"><div class="ac-auto-h"><h3>賃貸管理部（自動反映）</h3><dl><div><dt>入金</dt><dd class="ac-in">+'+yen(inc)+'</dd></div><div><dt>支払</dt><dd class="ac-out">−'+yen(exp).replace('−','')+'</dd></div><div><dt>差額</dt><dd class="'+(inc-exp>=0?'ac-in':'ac-out')+'">'+yen(inc-exp)+'</dd></div></dl></div>'+
+  (ren.length?'<div class="tbl-wrap"><table class="tbl cards">'+HEAD+'<tbody>'+ren.map(function(x){return entryRow(x,true)}).join('')+'</tbody></table></div>':'<p class="empty">'+e(mon())+'分の引継ぎはまだ受領していません。受領すると、区分ごとに1行ずつ入ります。</p>')+
+  '</div><p class="cap">賃貸管理部の引継ぎを受領すると、区分ごと・月ごとに1行（部屋ごとではありません）入ります。売上は入金、費用は支払です（サービス額・参考は入れません）。管理部の入出金は締め済みなので「済」、MFとの食い違いがない月は「消込済」です。</p></div>';
+ return h;
+}
+
+/* ---------- 売上・利益 ---------- */
+function panelSales(){
+ var E=A.entries(S.m),r=A.received(S.m),h='<h2>売上・利益（'+e(mon())+'）</h2>';
+ var gen=E.filter(function(x){return x.src!=='rental'&&x.type==='in'}).reduce(function(s,x){return s+x.amount},0);
+ var rs=r?r.pkg.sales.totals:null;
+ h+='<div class="ac-sec"><h3>売上サマリー（部門ごと）</h3><div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>部門</th><th class="num">売上</th><th class="num">費用</th><th class="num">粗利</th></tr></thead><tbody>'+
+  '<tr><td data-label="部門">仕入れ部・本社（'+(GK.LOCAL?'検証データにはありません':'見本')+'）</td><td data-label="売上" class="num">'+yen(gen)+'</td><td data-label="費用" class="num">—</td><td data-label="粗利" class="num">—</td></tr>'+
+  '<tr><td data-label="部門">賃貸管理部'+(r?' <span class="ac-tag">'+e(A.MEMO)+'</span>':'')+'</td><td data-label="売上" class="num">'+(rs?yen(rs.sales):'未受領')+'</td><td data-label="費用" class="num">'+(rs?yen(rs.cost):'—')+'</td><td data-label="粗利" class="num">'+(rs?'<b>'+yen(rs.gross)+'</b>':'—')+'</td></tr>'+
+  '</tbody></table></div></div>';
+ h+='<div class="ac-sec"><h3>賃貸管理部（'+e(mon())+'分）</h3>';
+ if(!r)return h+'<p class="note">まだ受領していません。「賃貸管理部からの引継ぎ」で受領すると、区分ごとの売上・費用が入ります。</p></div>';
+ h+='<p class="cap">第'+r.ver+'版（'+e(atText(r.at))+' '+e(r.by)+' 提出・'+e(atText(r.act.at))+' '+e(r.act.by)+' 受領）の数字です。</p>'+catTable(r.pkg,true)+regionTable(r.pkg)+'</div>';
+ return h;
+}
+function catTable(p,cashOnly){
+ var cats=p.sales.cats.filter(function(c){return cashOnly?(c.col==='sales'||c.col==='cost'):true}),T=p.sales.totals;
+ var cell=function(c,col){return c.col===col?(c.amount?'<b>'+yen(c.amount)+'</b>':'<span class="cap">¥0</span>'):''};
+ return '<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>区分</th><th class="num">売上</th><th class="num">費用</th>'+(cashOnly?'':'<th class="num">サービス額</th><th class="num">参考</th>')+'</tr></thead><tbody>'+
+  cats.map(function(c){return '<tr><td data-label="区分">'+e(c.cat)+'</td><td data-label="売上" class="num">'+cell(c,'sales')+'</td><td data-label="費用" class="num">'+cell(c,'cost')+'</td>'+(cashOnly?'':'<td data-label="サービス額" class="num">'+cell(c,'service')+'</td><td data-label="参考" class="num">'+cell(c,'ref')+'</td>')+'</tr>'}).join('')+
+  '<tr><td data-label="区分"><b>合計</b>（粗利 '+yen(T.gross)+'）</td><td data-label="売上" class="num"><b>'+yen(T.sales)+'</b></td><td data-label="費用" class="num"><b>'+yen(T.cost)+'</b></td>'+(cashOnly?'':'<td data-label="サービス額" class="num">'+yen(T.service)+'</td><td data-label="参考" class="num">'+yen(T.ref)+'</td>')+'</tr></tbody></table></div>';
+}
+function regionTable(p){
+ var R=p.sales.regions||{};
+ return '<h3>地域ごと</h3><div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>地域</th><th class="num">売上</th><th class="num">費用</th><th class="num">粗利</th></tr></thead><tbody>'+
+  Object.keys(R).map(function(k){var g=R[k];return '<tr><td data-label="地域">'+e(k)+'</td><td data-label="売上" class="num">'+yen(g.sales)+'</td><td data-label="費用" class="num">'+yen(g.cost)+'</td><td data-label="粗利" class="num">'+yen(g.gross)+'</td></tr>'}).join('')+'</tbody></table></div>';
+}
+
+/* ---------- 賃貸管理部からの引継ぎ ---------- */
+function panelHand(){
+ if(S.open){var s=A.sub(S.open);if(s)return panelSub(s);S.open=null}
+ /* 2026-10-19: every month with a handover (newest first) + this month; a year filter when there are more than 12 */
+ var ms=A.subMonths();if(ms.indexOf(X.cur())<0)ms.push(X.cur());ms.sort().reverse();
+ var h='<h2>賃貸管理部からの引継ぎ</h2><p class="cap">賃貸管理部が月を締めて売上を確定したあとに提出する、月ごとの引継ぎです（売上・費用の合計、部屋ごとの明細、オーナー送金と総合振込データ、MF照合の結果と申し送り）。受領すると、入出金管理と売上・利益に入ります。</p>';
+ if(ms.length>12){
+  var ys=[];ms.forEach(function(m){var y=m.slice(0,4);if(ys.indexOf(y)<0)ys.push(y)});
+  if(S.hy==null||(S.hy!==''&&ys.indexOf(S.hy)<0))S.hy=ys[0];
+  h+='<div class="seg ac-years" role="group" aria-label="年で絞り込む">'+[''].concat(ys).map(function(y){return '<button type="button" data-hy="'+e(y)+'" aria-pressed="'+(S.hy===y)+'">'+(y?e((+y)+'年'):'すべて')+'</button>'}).join('')+'</div>';
+  if(S.hy)ms=ms.filter(function(m){return m.slice(0,4)===S.hy});
+  h+='<p class="cap">'+e(S.hy?(+S.hy)+'年の':'全部の')+' '+ms.length+'か月を新しい順に表示しています。</p>';
+ }
+ h+='<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>月</th><th>状態</th><th>提出</th><th>経理の対応</th><th class="num">売上高</th><th></th></tr></thead><tbody>'+ms.map(function(m){
+  var st=A.status(m),s=st.sub;
+  if(!s)return '<tr><td data-label="月"><b>'+e(mon(m))+'分</b></td><td data-label="状態">'+pill('none')+'</td><td data-label="提出"><span class="cap">'+(m===X.cur()?'月の途中です':'まだ届いていません')+'</span></td><td data-label="経理の対応"></td><td data-label="売上高" class="num"></td><td></td></tr>';
+  return '<tr><td data-label="月"><b>'+e(mon(m))+'分</b>'+(s.sample?' <span class="pill">見本</span>':'')+'</td><td data-label="状態">'+pill(s.state)+' <span class="cap">第'+s.ver+'版</span></td><td data-label="提出">'+e(atText(s.at))+' '+e(s.by)+'</td>'+
+   '<td data-label="経理の対応">'+(s.act?e((A.EV[s.act.kind]||s.act.kind)+' '+atText(s.act.at)+' '+s.act.by):'<span class="cap">確認待ち</span>')+'</td><td data-label="売上高" class="num">'+yen(s.pkg.sales.totals.sales)+'</td>'+
+   '<td><button type="button" class="act" data-sub="'+e(s.id)+'" aria-label="'+e(mon(m))+'分 第'+s.ver+'版を開く">開く</button></td></tr>'}).join('')+'</tbody></table></div>';
+ return h;
+}
+function panelSub(s){
+ var p=s.pkg,V=A.versions(s.m),l=A.latest(s.m),T=p.sales.totals,h='';
+ h+='<div class="card-head"><h2>'+e(mon(s.m))+'分の引継ぎ（第'+s.ver+'版）</h2><button type="button" class="btn" data-act="back">一覧へ戻る</button></div>';
+ if(V.length>1)h+='<div class="seg" role="group" aria-label="版">'+V.map(function(v){return '<button type="button" data-sub="'+e(v.id)+'" aria-pressed="'+(v.id===s.id)+'">第'+v.ver+'版</button>'}).join('')+'</div>';
+ if(l&&l.id!==s.id)h+='<p class="ac-banner warn">これは古い版です（いまは第'+l.ver+'版）。</p>';
+ h+='<dl class="kv ac-kv"><dt>状態</dt><dd>'+pill(s.state)+'</dd><dt>提出</dt><dd>'+e(atText(s.at))+' '+e(s.by)+'</dd>'+
+  (s.act?'<dt>'+e(A.EV[s.act.kind]||s.act.kind)+'</dt><dd>'+e(atText(s.act.at))+' '+e(s.act.by)+(s.act.reason?'<br>理由：'+e(s.act.reason):'')+'</dd>':'')+
+  '<dt>入出金の締め</dt><dd>'+(p.closedAt?e(GK.jp(p.closedAt))+' 締め済み':'—')+'</dd><dt>管理部売上</dt><dd>'+(p.demo?'デモの過去データ（確定なし・見本の明細）':p.fixedAt?e(GK.jp(p.fixedAt))+' 確定済み':'—')+'</dd></dl>';
+ if(s.sample||p.demo)h+='<p class="ac-banner info">見本：'+e(mon(s.m))+'の管理部売上はデモの過去データなので、区分ごと・部屋ごとの数字は台帳から作った見本です（合計は管理部売上と同じです）。</p>';
+ h+=actions(s);
+ /* 1. 合計 */
+ h+='<section class="ac-sec" aria-labelledby="h-tot"><h3 id="h-tot">1. 売上・費用の合計</h3><div class="stats"><div class="stat info"><span class="k">売上高</span><span class="v">'+yen(T.sales)+'</span></div><div class="stat"><span class="k">費用</span><span class="v">'+yen(T.cost)+'</span></div><div class="stat ok"><span class="k">粗利</span><span class="v">'+yen(T.gross)+'</span></div><div class="stat"><span class="k">サービス額</span><span class="v">'+yen(T.service)+'</span></div></div>'+
+  '<h3>区分ごと</h3>'+catTable(p,false)+regionTable(p)+'<p class="cap">参考（修繕費（オーナー負担）・逆ザヤ）とサービス額は合計に入りません。管理委託手数料は税抜です。</p></section>';
+ /* 2. 部屋ごとの明細 (collapsible, searchable) */
+ var q=String(S.q||'').normalize('NFKC').toLowerCase().trim(),rows=p.rooms.filter(function(x){if(!q)return true;return [x.label,x.propName,x.cat,x.unit,x.region].join(' ').normalize('NFKC').toLowerCase().indexOf(q)>=0});
+ h+='<section class="ac-sec" aria-labelledby="h-rooms"><h3 id="h-rooms">2. 部屋ごとの明細（'+p.rooms.length+'行）</h3><div class="ac-btns"><button type="button" class="btn" data-act="rooms" aria-expanded="'+S.rooms+'" aria-controls="acRooms">'+(S.rooms?'明細を閉じる':'明細を開く')+'</button></div>';
+ if(S.rooms){
+  h+='<div id="acRooms" class="ac-sec"><div class="toolbar"><label class="sr" for="acQ">明細を探す</label><input type="search" class="search" id="acQ" data-q="1" value="'+e(S.q)+'" placeholder="物件名・部屋番号・区分で探す"><span class="cap" id="acQn">'+(q?p.rooms.length+'行中 '+rows.length+'行':'全部で '+p.rooms.length+'行')+'</span></div>'+
+   (rows.length?'<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>物件・部屋</th><th>区分</th><th>内容</th><th>地域</th><th class="num">金額</th></tr></thead><tbody>'+rows.map(function(x){
+    return '<tr><td data-label="物件・部屋">'+e(x.unit?x.unit:(x.propName||'（物件なし）'))+'</td><td data-label="区分">'+e(x.cat)+'</td><td data-label="内容">'+e(x.label)+'</td><td data-label="地域">'+e(x.region)+'</td><td data-label="金額" class="num">'+yen(x.amount)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="empty">見つかりません</p>')+'</div>';
+ }
+ h+='</section>';
+ /* 3. 送金と振込データ */
+ var pi=GK.can('pi.owner');
+ h+='<section class="ac-sec" aria-labelledby="h-remit"><h3 id="h-remit">3. オーナー送金と総合振込データ</h3>'+(p.remit.length?'<ul class="rows">'+p.remit.map(function(r){var op=!!S.st[r.key];
+   return '<li><span class="main-t"><b>'+e(r.owner)+' 様</b>（'+e(r.kind)+'） <span class="pill '+(r.state==='sent'?'ok':r.state==='fixed'?'info':'warn')+'">'+e(r.stateLabel)+'</span><div class="sub">送金予定日 '+e(GK.jp(r.payDate))+'</div>'+
+    '<button type="button" class="link" data-st="'+e(r.key)+'" aria-expanded="'+op+'">'+(op?'明細を閉じる':'明細を見る')+'</button>'+(op?'<pre class="ac-st">'+e(r.text)+'</pre>':'')+'</span><span class="end"><b>'+(r.net>0?yen(r.net):'送金なし')+'</b></span></li>'}).join('')+'</ul>':'<p class="empty">この月の送金はありません</p>');
+ var tf=p.transfer;
+ h+='<h3>総合振込データ（送金日ごと）</h3>';
+ if(!tf.files.length)h+='<p class="note">総合振込データはありません（確定した送金がない、または設定の不足）。'+(tf.errors.length?e(tf.errors.join(' ')):'')+'</p>';
+ tf.files.forEach(function(f,i){
+  h+='<div class="ac-sec"><p><b>送金日 '+e(GK.jp(f.date))+'</b> · '+f.count+'件 · 合計 '+yen(f.total)+' <span class="cap">（'+e(f.names.join('、'))+' 様）</span></p>'+
+   (pi?'<label class="sr" for="acZg'+i+'">総合振込データ（'+e(GK.jp(f.date))+'）</label><textarea class="ac-zg" id="acZg'+i+'" readonly wrap="off" spellcheck="false">'+e(f.text)+'</textarea><div class="ac-btns"><button type="button" class="btn" data-copy="'+i+'">振込データをコピー</button><span class="cap">この画面ではファイルを保存できません。コピーして使ってください（本番ではファイルで出します）。</span></div>':
+    '<p class="note">口座番号が入るため、表示しない設定です（「オーナーの電話・口座の表示」）。</p>')+'</div>'});
+ if(tf.excluded.length)h+='<p class="cap">総合振込に入らなかった送金：'+e(tf.excluded.map(function(x){return x.name+' 様 '+GK.yen(x.amount)+'（'+x.reason+'）'}).join('、'))+'</p>';
+ h+='<p class="cap">送金済みの分も、送ったときの記録として入れています。</p></section>';
+ /* 4. MF照合と申し送り */
+ var mf=p.mf,ks=Object.keys(mf.counts),list=mf.list.filter(function(x){return !S.onlyBad||x.state!=='ok'});
+ h+='<section class="ac-sec" aria-labelledby="h-mf"><h3 id="h-mf">4. MF照合の結果と申し送り</h3>'+
+  '<p>'+(mf.loaded?(mf.bad?'<span class="pill danger">食い違い '+mf.bad+'件</span>':'<span class="pill ok">食い違いなし</span>'):'<span class="pill warn">MF未取り込み</span>')+'</p>'+
+  '<div class="ac-chips">'+ks.map(function(k){return '<span class="pill">'+e(X.mfLabel[k]||k)+' '+mf.counts[k]+'件</span>'}).join('')+'</div>'+
+  '<div class="ac-btns"><button type="button" class="act" data-act="onlybad" aria-pressed="'+S.onlyBad+'">食い違いだけ</button></div>'+
+  (list.length?'<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>日付</th><th>名義・摘要</th><th class="num">金額</th><th>結果</th><th>直し方</th></tr></thead><tbody>'+list.map(function(x){
+   return '<tr><td data-label="日付">'+e(GK.jp(x.date))+'</td><td data-label="名義・摘要">'+e(x.name)+'</td><td data-label="金額" class="num">'+yen(x.amount)+'</td><td data-label="結果"><span class="pill '+(x.state==='ok'?'ok':'warn')+'">'+e(x.label)+'</span></td><td data-label="直し方">'+e(x.fix||'—')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="empty">'+(S.onlyBad?'食い違いはありません':'照合した行はありません')+'</p>')+
+  '<h3>申し送り（管理部から）</h3>'+(s.note?'<p class="ac-note">'+e(s.note)+'</p>':'<p class="cap">申し送りはありません。</p>')+'</section>';
+ /* 版の記録 */
+ h+='<section class="ac-sec"><h3>版の記録</h3><ul class="rows ac-hist">'+V.slice().reverse().map(function(v){
+  return '<li><span class="main-t"><b>第'+v.ver+'版</b> '+pill(v.state)+(v.note?'<div class="sub">申し送り：'+e(v.note)+'</div>':'')+A.events(v).filter(function(x){return x.kind!=='submit'}).map(function(x){return '<div class="sub">'+e(x.label)+'：'+e(atText(x.at))+' '+e(x.by)+(x.reason?'（理由：'+e(x.reason)+'）':'')+'</div>'}).join('')+'</span><span class="end">'+e(atText(v.at))+'<br>'+e(v.by)+' 提出</span></li>'}).join('')+'</ul></section>';
+ return h;
+}
+function actions(s){
+ if(s.state==='received'){
+  if(!GK.can('acct.receive'))return '';
+  var cu=A.canUnreceive(s),h0='<div class="ac-sec" id="acActs">';
+  if(S.unrecv!==s.id)h0+='<div class="ac-btns"><button type="button" class="btn danger" data-act="unrecv" data-id="'+e(s.id)+'"'+(cu.ok?'':' disabled aria-describedby="acUnWhy"')+'>受領を取り消す</button></div>'+
+   (cu.ok?'<p class="cap">取り消すと、この版の「'+e(A.MEMO)+'」の行（'+(s.lines||[]).length+'件）だけを消して、確認待ちに戻します。</p>':'<p class="cap" id="acUnWhy">'+e(cu.why)+'</p>');
+  else h0+='<form class="ac-form" id="acUnForm" novalidate><label for="acUn">受領を取り消す理由<span class="req">必須</span></label><textarea id="acUn" data-unreason="'+e(s.id)+'" maxlength="200" rows="2" placeholder="例：区分を確認し直すため">'+e(S.reason['u:'+s.id]||'')+'</textarea>'+
+   '<p class="err" id="acUnErr" role="alert"></p><div class="ac-btns"><button type="submit" class="btn danger">理由を残して受領を取り消す</button><button type="button" class="btn" data-act="unrecvno">やめる</button></div></form>';
+  return h0+'</div>';
+ }
+ if(s.state!=='submitted')return '';
+ if(!GK.can('acct.receive'))return '<p class="ac-banner info">経理の確認待ちです。'+(GK.can('page.acct')?'受領・差し戻しは「引継ぎの受領・差し戻し」ができる人が行います。':'')+'</p>';
+ var cr=A.canReceive(s),ct=A.canReturn(s),h='<div class="ac-sec" id="acActs"><div class="ac-btns">';
+ h+='<button type="button" class="btn primary" data-act="recv" data-id="'+e(s.id)+'"'+(cr.ok?'':' disabled aria-describedby="acRecvWhy"')+'>受領する</button>';
+ if(ct.ok&&S.returning!==s.id)h+='<button type="button" class="btn danger" data-act="ret" data-id="'+e(s.id)+'">差し戻す</button>';
+ h+='</div>';
+ if(!cr.ok){var other=cr.self?GK.staffList().filter(function(p){return p.id!==GK.MEID&&GK.can('acct.receive',p.id)})[0]:null;
+  h+='<p class="cap" id="acRecvWhy">'+e(cr.why)+(other&&document.getElementById('gkMe')?' '+e(other.n)+'（'+e(GK.roleOf(other.id))+'）に切り替えると受領できます（デモ・左の「操作する人」）。':'')+'</p>'}
+ else h+='<p class="cap">受領すると、入出金管理に「'+e(A.MEMO)+'」の行（区分ごとに1行）が入り、ダッシュボードと売上・利益に賃貸管理部の数字が入ります。</p>';
+ if(S.returning===s.id)h+='<form class="ac-form" id="acRetForm" novalidate><label for="acRet">差し戻す理由<span class="req">必須</span></label><textarea id="acRet" data-reason="'+e(s.id)+'" maxlength="200" rows="3" placeholder="例：森 様の送金額が明細と違います。確認してください。">'+e(S.reason[s.id]||'')+'</textarea>'+
+  '<p class="err" id="acRetErr" role="alert"></p><p class="cap">差し戻すと、'+e(s.by)+' さんの「今日確認すること」に、理由つきのやることが入ります。管理部は締めを解除して直し、再提出します。</p><div class="ac-btns"><button type="submit" class="btn danger">理由を付けて差し戻す</button><button type="button" class="btn" data-act="retno">やめる</button></div></form>';
+ return h+'</div>';
+}
+
+function render(){
+ A.ensure();
+ renderHead();
+ var b=S.tab==='cashflow'?panelCash():S.tab==='sales'?panelSales():S.tab==='handover'?panelHand():panelDash();
+ $('#acPanel').innerHTML=b;
+}
+function keep(fn){var a=document.activeElement,id=a&&a.id,sel=null;try{if(a&&typeof a.selectionStart==='number')sel=[a.selectionStart,a.selectionEnd]}catch(x){}fn();if(id){var n=document.getElementById(id);if(n&&n!==a&&n.focus){try{n.focus();if(sel&&n.setSelectionRange)n.setSelectionRange(sel[0],sel[1])}catch(x){}}}}
+function setHash(){try{history.replaceState(null,'',S.open?'#sub-'+S.open:'#tab-'+S.tab+(S.m!==X.cur()?'-'+S.m:''))}catch(x){}}
+function setTab(k,focus){S.tab=k;S.open=null;S.returning=null;S.unrecv=null;try{localStorage.setItem(TAB_KEY,k)}catch(x){}setHash();render();if(focus){var b=document.getElementById('tab-'+k);if(b)b.focus()}}
+function openSub(id){var s=A.sub(id);if(!s)return;S.tab='handover';S.open=s.id;S.m=s.m;S.returning=null;S.q='';S.st={};setHash();render();var p=$('#acPanel');if(p&&p.focus)p.focus();say(mon(s.m)+'分 第'+s.ver+'版を開きました')}
+
+document.addEventListener('click',function(ev){
+ var t=ev.target.closest('button');if(!t||t.disabled||t.closest('#side,#topbar,#toast,.gkc-wrap'))return;var d=t.dataset;
+ if(d.tab){setTab(d.tab,true);return}
+ if(d.sub){openSub(d.sub);return}
+ if(d.st){S.st[d.st]=!S.st[d.st];keep(render);return}
+ if(d.hy!==undefined){S.hy=d.hy;render();var hb=document.querySelector('[data-hy="'+d.hy+'"]');if(hb)hb.focus();say((d.hy?(+d.hy)+'年':'すべての年')+'の引継ぎを表示しています');return}
+ if(d.copy!==undefined){var s0=A.sub(S.open),f=s0&&s0.pkg.transfer.files[+d.copy];if(f&&GK.can('pi.owner'))copy(f.text,t,document.getElementById('acZg'+d.copy));return}
+ var a=d.act;
+ if(a==='back'){S.open=null;S.returning=null;setHash();render();say('一覧に戻りました');return}
+ if(a==='rooms'){S.rooms=!S.rooms;keep(render);if(S.rooms){var q=$('#acQ');if(q)q.focus()}return}
+ if(a==='onlybad'){S.onlyBad=!S.onlyBad;keep(render);return}
+ if(a==='ret'){if(!GK.can('acct.receive'))return;S.returning=d.id;render();var ta=$('#acRet');if(ta)ta.focus();return}
+ if(a==='unrecv'){if(!GK.can('acct.receive'))return;S.unrecv=d.id;render();var ut=$('#acUn');if(ut)ut.focus();return}
+ if(a==='unrecvno'){var uid=S.unrecv;S.unrecv=null;render();var ub=document.querySelector('[data-act="unrecv"][data-id="'+uid+'"]');if(ub)ub.focus();return}
+ if(a==='retno'){var rid=S.returning;S.returning=null;render();var rb=document.querySelector('[data-act="ret"][data-id="'+rid+'"]');if(rb)rb.focus();return}
+ if(a==='recv'){if(!GK.can('acct.receive'))return;var sid=d.id,r=A.receive(sid);if(!r.ok){GK.toast(r.msg);return}
+  render();say(mon(r.sub.m)+'分を受領しました');
+  GK.toast(mon(r.sub.m)+'分を受領しました（「'+A.MEMO+'」'+r.lines.length+'行を入出金に追加）',function(){var u=r.undo();render();GK.toast(u.ok?'受領を取り消しました':u.msg)});return}
+});
+document.addEventListener('change',function(ev){
+ var t=ev.target;
+ if(t.id==='acMonth'){S.m=t.value;S.open=null;S.returning=null;setHash();render();$('#acMonth').focus();say(mon()+'を表示しています');return}
+});
+document.addEventListener('input',function(ev){
+ var t=ev.target;
+ if(t.dataset.q){S.q=t.value;keep(render);return}
+ if(t.dataset.reason){S.reason[t.dataset.reason]=t.value;return}
+ if(t.dataset.unreason){S.reason['u:'+t.dataset.unreason]=t.value;return}
+});
+document.addEventListener('submit',function(ev){
+ ev.preventDefault();var f=ev.target;
+ if(f.id==='acUnForm'&&GK.can('acct.receive')){var uid=S.unrecv,ua=$('#acUn'),uw=S.reason['u:'+uid]!=null?S.reason['u:'+uid]:(ua?ua.value:''),ur=A.unreceive(uid,uw);
+  if(!ur.ok){var ue=$('#acUnErr');if(ue)ue.textContent=ur.msg;if(ua){ua.setAttribute('aria-invalid','true');ua.setAttribute('aria-describedby','acUnErr');ua.focus()}return}
+  S.unrecv=null;delete S.reason['u:'+uid];render();say(mon(ur.sub.m)+'分の受領を取り消しました');
+  GK.toast(mon(ur.sub.m)+'分の受領を取り消しました（「'+A.MEMO+'」'+ur.removed.length+'行を消しました）',function(){var u=ur.undo();render();GK.toast(u.ok?'受領した状態に戻しました':u.msg)});return}
+ if(f.id!=='acRetForm'||!GK.can('acct.receive'))return;
+ var id=S.returning,ta=$('#acRet'),why=S.reason[id]!=null?S.reason[id]:(ta?ta.value:''),r=A.giveBack(id,why);
+ if(!r.ok){var er=$('#acRetErr');if(er)er.textContent=r.msg;if(ta){ta.setAttribute('aria-invalid','true');ta.setAttribute('aria-describedby','acRetErr');ta.focus()}return}
+ S.returning=null;delete S.reason[id];render();say(mon(r.sub.m)+'分を差し戻しました');
+ GK.toast(mon(r.sub.m)+'分を差し戻しました（'+r.sub.by+' さんのやることに追加）',function(){var u=r.undo();render();GK.toast(u.ok?'差し戻しを取り消しました':u.msg)});
+});
+document.addEventListener('keydown',function(ev){
+ var t=ev.target;
+ if(t&&t.getAttribute&&t.getAttribute('role')==='tab'){var i=TABS.map(function(x){return x[0]}).indexOf(t.dataset.tab),j=-1;
+  if(ev.key==='ArrowRight'||ev.key==='ArrowLeft')j=(ev.key==='ArrowRight'?i+1:i-1+TABS.length)%TABS.length;else if(ev.key==='Home')j=0;else if(ev.key==='End')j=TABS.length-1;
+  if(j>=0){ev.preventDefault();setTab(TABS[j][0],true)}return}
+ if(ev.key==='Escape'&&(S.returning||S.unrecv)){S.returning=null;S.unrecv=null;render()}
+});
+window.addEventListener('hashchange',function(){readHash();render()});
+var composing=false,pending=false;
+document.addEventListener('compositionstart',function(){composing=true});
+document.addEventListener('compositionend',function(){composing=false;if(pending){pending=false;setTimeout(function(){keep(render)},0)}});
+/* another tab saved: GK.db was replaced — everything is looked up again by id */
+window.GKrefresh=function(){
+ if(composing){pending=true;return}
+ if((S.returning||S.unrecv)&&!GK.can('acct.receive')){S.returning=null;S.unrecv=null;GK.offToast('引継ぎの受領・差し戻し')}
+ if(S.open&&!A.sub(S.open))S.open=null;
+ try{keep(render)}catch(err){if(window.console)console.error(err)}
+};
+render();
+})();
+</script>
+</body></html>

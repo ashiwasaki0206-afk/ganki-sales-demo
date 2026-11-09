@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>入出金</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="ganki-base.css">
+<style>
+/* the month picker: ganki-base.css .gk-mp (GK.monthPicker) */
+.mz select,.mz input[type="text"],.mz input[type="search"],.mz input[type="number"]{border:1px solid var(--input);border-radius:8px;padding:7px 10px;background:var(--surface);min-width:0;max-width:100%}
+.mz-banner{padding:10px 14px;border-radius:8px;font-size:13px;display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap}
+.mz-banner.closed{background:var(--ok-soft);color:var(--ok);font-weight:500}
+.mz-banner.sample{background:var(--info-soft);color:var(--info)}
+.mz-tabs [role="tab"]{min-height:40px;display:inline-flex;align-items:center;gap:6px}
+.mz-tabs [role="tab"]:focus-visible{outline-offset:-2px}
+.mz-n{font-size:11px;border-radius:999px;padding:0 7px;background:var(--surface-2);color:var(--muted);font-weight:500;line-height:1.7}
+.mz-n.danger{background:var(--danger-soft);color:var(--danger)}.mz-n.warn{background:var(--warn-soft);color:var(--warn)}
+#mzPanel:focus{outline:none}#mzPanel:focus-visible{outline:2px solid var(--primary)}
+.mz-in{color:var(--ok);font-weight:700;white-space:nowrap}
+.mz-out{color:var(--fg);font-weight:700;white-space:nowrap}
+.mz-dir{display:block;font-size:11.5px;color:var(--muted);font-weight:400}
+.mz-name{font-weight:500;overflow-wrap:anywhere}
+.chip{display:inline-block;font-size:11.5px;padding:0 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);line-height:1.8;margin:0 4px 4px 0;white-space:nowrap}
+.chip.hi{border-color:#a9d6bd;color:var(--ok)}
+.mz-alloc{display:block;overflow-wrap:anywhere}
+.mz-alloc .s{font-size:12px;color:var(--muted)}
+.mz-acts{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+.tbl td.mz-acts{white-space:normal;min-width:150px}
+.mz-subrow td{background:var(--surface-2)}
+.mz-form{display:flex;flex-direction:column;gap:8px;padding:4px 0}
+.mz-radios{display:flex;flex-wrap:wrap;gap:6px 14px}
+.mz-radios label{display:flex;gap:6px;align-items:center;font-size:13px;min-height:32px;cursor:pointer}
+.mz-row-btns{display:flex;flex-wrap:wrap;gap:8px}
+.mz-bulk{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.mz-drop{border:2px dashed var(--input);border-radius:10px;padding:22px 16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;background:var(--surface)}
+.mz-drop.is-over{border-color:var(--primary);background:var(--primary-soft)}
+.mz-msg{padding:10px 12px;border-radius:8px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+.mz-msg.ok{background:var(--ok-soft);color:var(--ok)}.mz-msg.ng{background:var(--danger-soft);color:var(--danger)}.mz-msg.info{background:var(--info-soft);color:var(--info)}
+.mz-msg ol{margin:0;padding-left:1.4em;color:var(--fg)}
+.mz-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mz-box{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.mz-box h3,.mz-owner h3,.mz-sec h3{font-size:14px}
+.mz-sec{display:flex;flex-direction:column;gap:10px;min-width:0}
+.mz-sec+.mz-sec{border-top:1px solid var(--line);padding-top:14px}
+.mz-owner{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.mz-owner-h{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.mz-tot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 16px;font-size:13px;max-width:440px;margin:0}
+.mz-tot dt{color:var(--muted)}.mz-tot dd{margin:0;text-align:right;white-space:nowrap}
+.mz-tot .net{font-weight:700;font-size:16px;color:var(--fg)}
+.mz-tot .none{font-weight:700;color:var(--warn);white-space:normal;text-align:right}
+.mz-text{width:100%;min-height:200px;border:1px solid var(--input);border-radius:8px;padding:10px;font:inherit;font-size:12.5px;line-height:1.7;background:var(--surface);resize:vertical}
+.mz-zengin{font-family:ui-monospace,"BIZ UDGothic","MS Gothic","Osaka-Mono",monospace;font-size:12px;line-height:1.5;white-space:pre;overflow:auto;max-height:280px;max-width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px;margin:0}
+.mz-list{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.mz-check{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mz-check li{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:13px}
+.mz-check li.ok{background:var(--ok-soft);color:var(--ok)}
+.mz-fix{font-size:12.5px;color:var(--fg)}
+.mz-fix li{margin-bottom:2px}
+.mz-entry{font-size:12px;overflow-wrap:anywhere}
+.mz-entry .s{color:var(--muted)}
+.mz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 14px}
+.mz-map td{padding:5px 8px}.mz-map input{width:100%}
+.tbl.mz-map td{vertical-align:middle}
+.mz-dirty{font-size:12.5px;color:var(--warn);font-weight:500}
+.mz-ed{width:540px}
+.mz-ed .panel-body{gap:14px}
+.mz-line{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+.mz-line .wide{grid-column:1 / -1}
+.mz-line select[size]{min-height:0;padding:4px}
+.mz-line-h{grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.mz-rest{padding:10px 12px;border-radius:8px;font-size:13.5px;font-weight:500;background:var(--warn-soft);color:var(--warn)}
+.mz-rest.ok{background:var(--ok-soft);color:var(--ok)}.mz-rest.ng{background:var(--danger-soft);color:var(--danger)}
+.mz-cands{display:flex;flex-direction:column;gap:6px}
+.mz-cands .act{text-align:left;white-space:normal;padding:6px 10px;line-height:1.5}
+.mz-sticky{position:sticky;bottom:0;background:var(--surface);padding:10px 0 4px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px}
+.mz-dl{display:grid;grid-template-columns:6em minmax(0,1fr);gap:2px 10px;font-size:13px;margin:0}
+.mz-dl dt{color:var(--muted)}.mz-dl dd{margin:0;overflow-wrap:anywhere}
+@media (max-width:900px){.mz-two{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){
+ .mz .btn,.mz .act,.mz .seg button,.mz [role="tab"],.mz select,.mz input[type="text"],.mz input[type="search"],.mz .link,.mz-radios label{min-height:44px}
+ .mz .act{display:inline-flex;align-items:center}
+ .tbl.cards td.mz-acts{min-width:0;padding-left:0}
+ .tbl.cards td.mz-acts::before{display:none}
+ .mz-acts .act{flex:1 1 auto;justify-content:center}
+ .mz-ed{width:100%;left:0;border-left:0}
+ .mz-line{grid-template-columns:minmax(0,1fr)}
+ .mz-tot{max-width:none}
+ .mz-row-btns .btn,.mz-sticky .btn{flex:1 1 auto;justify-content:center}
+ .mz details summary{min-height:44px;padding:12px 0}
+}
+</style></head>
+<body><div class="topbar" id="topbar"></div><div class="app"><aside class="side" id="side"></aside><main class="main mz" id="main">
+ <header class="head">
+  <div><h1>入出金</h1><p class="sub">口座の入出金を部屋ごとに確かめ、マネーフォワードの仕訳と照合して、オーナー送金と月の締めまで行います。</p></div>
+  <div class="head-actions gk-mpw mz-month"><div class="gk-mp" role="group" aria-label="表示する月"><button type="button" class="gk-mp-step" id="mzMonthPrev" data-mp="prev" data-mp-for="mzMonth" aria-label="前の月">‹<span class="gk-mp-t"> 前の月</span></button><label class="sr" for="mzMonth">表示する月</label><select id="mzMonth"></select><button type="button" class="gk-mp-step" id="mzMonthNext" data-mp="next" data-mp-for="mzMonth" aria-label="次の月"><span class="gk-mp-t">次の月 </span>›</button><button type="button" class="gk-mp-step gk-mp-now" id="mzMonthNow" data-mp="now" data-mp-for="mzMonth">今月</button></div><p class="gk-mp-hint" id="mzMonthHint" hidden></p></div>
+ </header>
+ <div id="mzNotes"></div>
+ <div class="stats" id="mzStats" role="group" aria-label="この月のまとめ（押すとその一覧を開きます）"></div>
+ <div class="tabs mz-tabs" id="mzTabs" role="tablist" aria-label="入出金の作業"></div>
+ <section class="card" id="mzPanel" role="tabpanel" tabindex="0"></section>
+ <p class="sr" id="mzLive" role="status" aria-live="polite"></p>
+</main></div>
+<div id="panel"></div><div id="toast"></div>
+<script src="ganki-local-data.js"></script>
+<script src="ganki-data.js"></script>
+<script src="ganki-money.js"></script>
+<script src="ganki-jonojo.js"></script>
+<script>
+(function(){
+GK.shell('money.html');
+if(GK.pageGate('page.money'))return; /* 機能の設定: this screen is OFF for the current person (nothing below runs, nothing is seeded) */
+var X=GK.money,e=GK.esc,yen=GK.yen,$=function(s){return document.querySelector(s)};
+/* typed numbers: full-width digits / commas count (１２，０００ → 12000) */
+function nfk(v){var s=String(v==null?'':v);try{s=s.normalize('NFKC')}catch(x){}return s}
+function digits(v){return nfk(v).replace(/[^\d]/g,'')}
+var ALL_TABS=[['import','取り込み'],['check','入出金の確認'],['mf','MFとの照合'],['remit','オーナー送金'],['close','締め'],['settings','設定']];
+/* 機能の設定: 取り込み・MFとの照合・設定 are tabs of their own (an OFF tab is not drawn and cannot be opened by #tab-…);
+   the other actions are switched per button (ACT_FEAT): an OFF button is not drawn and its action does not run */
+function tabOk(k){var f=GK.TAB_FEATURE['money.html'][k];return !f||GK.can(f)}
+var TABS=ALL_TABS.filter(function(t){return tabOk(t[0])});
+var ACT_FEAT={aiask:'ai.match',aipick:'ai.match',demomf:'money.import',bulk:'money.check',confirm:'money.check',adv:'money.check',edit:'money.check',skip:'money.check',reset:'money.check',edsave:'money.check',edadd:'money.check',edadv:'money.check',fix:'money.remit',unfix:'money.remit',sent:'money.remit',unsent:'money.remit',copyzg:'money.transfer',close:'money.close',reopen:'money.unclose',banksub:'money.settings',setsave:'money.settings',mapdef:'money.settings',dunsave:'money.settings',duncancel:'money.settings',dunup:'money.settings',dundown:'money.settings'};
+function actOk(a){return !ACT_FEAT[a]||GK.can(ACT_FEAT[a])}
+function gateHtml(h){return String(h).replace(/<button\b[^>]*\bdata-(act|go)="([\w:]+)"[^>]*>[\s\S]*?<\/button>/g,function(m,k,v){return (k==='act'?actOk(v):tabOk(v.split(':')[0]))?m:''})}
+var TAB_KEY='ganki-money-tab';
+var S={m:X.cur(),tab:'check',f:'all',prop:'',edit:null,skip:null,ai:null,skipD:{},over:null,mfAll:false,set:null,setT:'受託',reopen:false,reopenText:'',imp:null};
+try{var t0=localStorage.getItem(TAB_KEY);if(TABS.some(function(t){return t[0]===t0}))S.tab=t0}catch(err){}
+/* #tab-check / #tab-remit-2026-09 (only plain tokens survive the viewer link) */
+function readHash(){
+ var h=location.hash.slice(1),m=/^tab-([a-z]+)(?:-(\d{4}-\d{2}))?$/.exec(h);
+ if(!m||!TABS.some(function(t){return t[0]===m[1]}))return;
+ S.tab=m[1];if(m[2]&&X.monthList().indexOf(m[2])>=0)S.m=m[2];
+}
+readHash();
+function say(t){var l=$('#mzLive');if(!l)return;l.textContent='';setTimeout(function(){l.textContent=t},30)}
+function mon(m){return X.monY(m||S.m)}
+function M(){return X.month(S.m)}
+function closed(){return !!M().closed}
+function dt(s){return e(GK.sdw(s))}
+function amt(n){return n>=0?'<span class="mz-in">+'+yen(n)+'<span class="mz-dir">入金</span></span>':'<span class="mz-out">'+yen(n)+'<span class="mz-dir">出金</span></span>'}
+function pill(state){var c={ok:'ok',auto:'info',none:'danger',skip:''}[state];return '<span class="pill '+(c||'')+'">'+e(X.stateLabel[state]||state)+'</span>'}
+function chips(L){return (L.reasons||[]).filter(Boolean).map(function(r){return '<span class="chip'+(L.conf==='high'?' hi':'')+'">'+e(r)+'</span>'}).join('')}
+function rowLabel(r){return GK.sd(r.date)+' '+(r.amount>=0?'入金':'出金')+' '+yen(Math.abs(r.amount))+' '+r.name}
+function copy(text,btn,selEl){
+ var ok=function(){if(btn){var o=btn.textContent;btn.textContent='コピーしました';setTimeout(function(){if(btn.isConnected)btn.textContent=o},2000)}say('コピーしました')};
+ var ng=function(){try{if(selEl){if(selEl.select)selEl.select();else{var r=document.createRange();r.selectNodeContents(selEl);var s=window.getSelection();s.removeAllRanges();s.addRange(r)}}}catch(x){}say('選びました。Ctrl+C（スマホは長押し）でコピーしてください');GK.toast('選びました。Ctrl+C（スマホは長押し）でコピーしてください')};
+ try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(ok,ng);else ng()}catch(x){ng()}
+}
+
+/* ---------- head, notes, summary, tabs ---------- */
+function renderHead(){
+ var list=X.monthList();
+ if(list.indexOf(S.m)<0)S.m=X.cur();
+ /* 月の選び方 (GK.monthPicker): every month from the earliest one with data to this month */
+ GK.monthPicker({id:'mzMonth',months:list,value:S.m,hint:X.monthHint(),label:function(m){var c=X.hasMonth(m)&&X.month(m).closed;return GK.monthText(m)+(m===X.cur()?'（今月）':'')+(c?'・締め済み':'')}});
+ var n='',Mo=M();
+ if(Mo.sample&&Mo.sample.demo&&(Mo.sample.bank||Mo.sample.mf))n+='<p class="mz-banner sample">見本：'+e(mon())+'はデモの過去データです（架空の口座・MFの明細、送金済み・締め済み）。</p>';
+ else if(Mo.sample&&(Mo.sample.bank||Mo.sample.mf))n+='<p class="mz-banner sample">見本の明細を表示しています（'+(Mo.sample.bank?'口座':'')+(Mo.sample.bank&&Mo.sample.mf?'・':'')+(Mo.sample.mf?'MF':'')+'）。本物の明細は「取り込み」から入れると入れ替わります。</p>';
+ if(Mo.closed)n+='<p class="mz-banner closed" role="note">'+e(mon())+'は締め済み（'+e(GK.sd(Mo.closed.at))+' '+e(Mo.closed.by)+'）。この月は見るだけです。<button type="button" class="link" data-go="close">締めの画面へ</button></p>';
+ $('#mzNotes').innerHTML=n;
+}
+function renderStats(){
+ var s=X.summary(S.m),c=s.closed;
+ var t=function(cls,k,v,unit,go,sub){return '<button type="button" class="stat '+cls+'" data-go="'+go+'"><span class="k">'+k+'</span><span class="v">'+v+(unit?'<small>'+unit+'</small>':'')+'</span>'+(sub?'<span class="k">'+sub+'</span>':'')+'</button>'};
+ $('#mzStats').innerHTML=
+  t('','口座の入出金',s.rows,'件','check:all')+
+  t(s.rows&&s.rooms===s.rows?'ok':'','部屋に紐付け済み',s.rooms,'件','check:ok',s.ok-s.rooms>0?'ほか オーナー・会社 '+(s.ok-s.rooms)+'件':'')+
+  t(s.auto?'info':'','確認待ち',s.auto,'件','check:auto')+
+  t(s.none?'danger':'','要確認',s.none,'件','check:none')+
+  t(s.mf?'warn':'','MFとの食い違い',s.mfLoaded?s.mf:'—',s.mfLoaded?'件':'','mf',s.mfLoaded?'':'MF未取り込み')+
+  t(c?'ok':'','締め状態',c?'締め済み':'未締め','','close',c?GK.sd(c.at)+' '+e(c.by):'');
+}
+function tabCount(k,s){
+ if(k==='check'){var u=s.none+s.auto;return u?'<span class="mz-n'+(s.none?' danger':'')+'"><span class="sr">未確認 </span>'+u+'<span class="sr">件（要確認 '+s.none+'・確認待ち '+s.auto+'）</span></span>':''}
+ if(k==='mf')return s.mf?'<span class="mz-n warn" aria-label="食い違い '+s.mf+'件">'+s.mf+'</span>':'';
+ if(k==='close')return s.closed?'<span class="mz-n">済</span>':'';
+ return '';
+}
+function renderTabs(){
+ var s=X.summary(S.m);
+ $('#mzTabs').innerHTML=TABS.map(function(t){var on=t[0]===S.tab;return '<button type="button" role="tab" id="tab-'+t[0]+'" aria-controls="mzPanel" aria-selected="'+on+'" tabindex="'+(on?0:-1)+'" data-tab="'+t[0]+'">'+t[1]+tabCount(t[0],s)+'</button>'}).join('');
+ $('#mzPanel').setAttribute('aria-labelledby','tab-'+S.tab);
+}
+function setTab(k,focusTab){
+ S.tab=k;S.over=null;try{localStorage.setItem(TAB_KEY,k)}catch(err){}
+ try{history.replaceState(null,'','#tab-'+k+(S.m!==X.cur()?'-'+S.m:''))}catch(err){}
+ render();
+ if(focusTab){var b=document.getElementById('tab-'+k);if(b)b.focus()}
+}
+
+/* ---------- 取り込み ---------- */
+function impStatus(kind){
+ var Mo=M(),list=Mo.imports.filter(function(i){return i.kind===kind}),last=list[list.length-1];
+ var n=kind==='bank'?Mo.bank.length:Mo.mf.length,ds=(kind==='bank'?Mo.bank:Mo.mf).map(function(x){return x.date}).sort();
+ var h='<div class="mz-box"><h3>'+(kind==='bank'?'口座の入出金（楽天銀行）':'マネーフォワード クラウド会計')+'</h3>';
+ if(!n)return h+'<p class="cap">'+e(mon())+'の分はまだ取り込んでいません。</p></div>';
+ h+='<dl class="mz-dl"><dt>件数</dt><dd>'+n+(kind==='bank'?'件':'行')+'</dd><dt>期間</dt><dd>'+e(GK.sd(ds[0]))+'〜'+e(GK.sd(ds[ds.length-1]))+'</dd>'+
+  (kind==='bank'?'<dt>口座名</dt><dd>'+e(X.settings().bankName)+'</dd>':'')+
+  '<dt>取り込み</dt><dd>'+(last?e(last.sample?'見本':last.file||'ファイル')+'（'+e(GK.sd(String(last.at).slice(0,10)))+' '+e(String(last.at).slice(11,16))+' '+e(last.by)+'）':'—')+'</dd></dl>';
+ if(kind==='mf')h+='<p class="cap">MFで直したら、CSVを取り込み直してください（前の分と入れ替わります）。</p>';
+ return h+'</div>';
+}
+function panelImport(){
+ var c=closed(),h='<h2>取り込み（'+e(mon())+'）</h2>';
+ if(c)h+='<p class="note">'+e(mon())+'は締め済みなので、取り込めません。取り込み直すときは「締め」で締めを解除してください。</p>';
+ else h+='<div class="mz-drop" id="mzDrop"><p><b>CSVファイルをここにドラッグ</b>するか、ボタンで選んでください。</p><button type="button" class="btn primary" id="mzPick">CSVファイルを選ぶ</button><input type="file" id="mzFile" accept=".csv,text/csv,text/plain" multiple class="sr" tabindex="-1" aria-hidden="true">'+
+  '<p class="cap">楽天銀行の入出金明細（取引日・入出金(円)・取引後残高・入出金内容。入金と出金が別の列でも読めます）と、マネーフォワード クラウド会計の仕訳帳・総勘定元帳（取引日・借方／貸方の勘定科目・補助科目・部門・金額・摘要）を自動で見分けます。文字コードは UTF-8 と Shift_JIS のどちらでも読めます。'+e(mon())+'の行だけを取り込みます。</p></div>'+
+  '<div class="mz-bulk"><button type="button" class="btn" data-act="demomf">デモ用：MFで直したあとのCSVを取り込む</button><span class="cap">締めを試すためのボタンです。いまの紐付けどおりに直したMFの仕訳を取り込みます（まだ決まっていない行は仮受金・仮払金で入ります）。</span></div>';
+ var I=S.imp;
+ if(I&&I.m===S.m){
+  if(I.garbled)h+='<div class="mz-msg ng" role="alert"><b>文字化けしています。CSVをUTF-8で保存し直してください。</b><ol><li>CSVファイルをExcelで開きます。</li><li>「ファイル」→「名前を付けて保存」を押します。</li><li>ファイルの種類で「CSV UTF-8（コンマ区切り）」を選んで保存します。</li><li>保存したファイルを、もう一度ここで選びます。</li></ol></div>';
+  else h+='<div class="mz-msg '+(I.ok?'ok':I.dup?'info':'ng')+'" role="'+(I.ok?'status':'alert')+'">'+I.msgs.map(function(x){return '<span>'+e(x)+'</span>'}).join('')+(I.ok&&I.kind?'<span><button type="button" class="link" data-go="'+(I.kind==='mf'?'mf':'check:all')+'">'+(I.kind==='mf'?'MFとの照合を見る':'入出金の確認へ')+'</button></span>':'')+'</div>';
+ }
+ h+='<div class="mz-two">'+impStatus('bank')+impStatus('mf')+'</div>';
+ var hist=M().imports.slice().reverse();
+ if(hist.length)h+='<div class="mz-sec"><h3>取り込みの記録</h3><ul class="rows">'+hist.map(function(i){return '<li><span class="main-t">'+(i.kind==='bank'?'口座のCSV':'MFのCSV')+' · '+e(i.sample?'見本':i.file||'ファイル')+'<div class="sub">'+i.count+(i.kind==='bank'?'件':'行')+' · '+e(GK.sd(i.from))+'〜'+e(GK.sd(i.to))+(i.account?' · '+e(i.account):'')+'</div></span><span class="end">'+e(GK.sd(String(i.at).slice(0,10)))+' '+e(String(i.at).slice(11,16))+'<br>'+e(i.by)+'</span></li>'}).join('')+'</ul></div>';
+ return h;
+}
+function readFiles(files){
+ if(!GK.can('money.import'))return;
+ files=[].slice.call(files||[]);if(!files.length)return;
+ if(closed()){S.imp={m:S.m,ok:false,msgs:[mon()+'は締め済みなので取り込めません。']};render();return}
+ var msgs=[],okAny=false,kind='',undos=[],dup=false,garbled=false,left=files.length;
+ files.forEach(function(f){
+  var rd=new FileReader();
+  rd.onload=function(){
+   var raw=rd.result,dec=typeof raw==='string'?{text:raw,enc:''}:X.decodeBytes(raw);
+   var r=X.importText(S.m,dec.text,f.name);
+   if(r.ok&&dec.enc==='Shift_JIS')r.msg+='（Shift_JIS のファイルとして読みました）';
+   if(r.garbled)garbled=true;
+   msgs.push((files.length>1?f.name+'：':'')+r.msg);
+   if(r.ok){okAny=true;kind=kind||r.kind;undos.push(r.undo)}else if(r.dup)dup=true;
+   if(--left)return;
+   S.imp={m:S.m,ok:okAny,dup:dup&&!okAny,garbled:garbled&&!okAny,kind:kind,msgs:msgs};
+   render();
+   var box=document.querySelector('.mz-msg');if(box&&box.focus){box.setAttribute('tabindex','-1');box.focus()}
+   if(okAny)GK.toast('取り込みました',function(){undos.slice().reverse().forEach(function(u){u()});S.imp=null;render();GK.toast('取り込む前に戻しました')});
+  };
+  rd.onerror=function(){msgs.push(f.name+'：ファイルを読めませんでした。');if(!--left){S.imp={m:S.m,ok:okAny,kind:kind,msgs:msgs};render()}};
+  if(window.TextDecoder&&rd.readAsArrayBuffer)rd.readAsArrayBuffer(f);else rd.readAsText(f,'utf-8');
+ });
+}
+
+/* ---------- 入出金の確認 ---------- */
+var FILTERS=[['all','すべて'],['none','要確認だけ'],['auto','確認待ち'],['ok','確認済み'],['in','入金'],['out','出金']];
+function rowsShown(){
+ var R=X.rows(S.m);
+ return R.filter(function(x){
+  var f=S.f;
+  if(f==='none'&&x.state!=='none')return false;if(f==='auto'&&x.state!=='auto')return false;if(f==='ok'&&x.state!=='ok')return false;
+  if(f==='in'&&x.dir!=='in')return false;if(f==='out'&&x.dir!=='out')return false;
+  if(S.prop){var units=(x.link.allocs||[]).map(function(a){return a.unit||''}).filter(Boolean);
+   if(S.prop==='-'){if(units.length)return false}else if(!units.some(function(u){return u.indexOf(S.prop+'-')===0}))return false}
+  return true;
+ });
+}
+function allocHtml(x){
+ var L=x.link;
+ if(x.state==='skip')return '<span class="mz-alloc">紐付けない<span class="s">：'+e(L.skipReason||'')+'</span></span>';
+ if(!L.allocs||!L.allocs.length)return '<span class="mz-alloc s">部屋・用途 未定</span>';
+ var h=L.allocs.map(function(a){var t=X.target(a);
+  return '<span class="mz-alloc">'+(t.kind==='room'?'<a href="properties.html#room-'+e(a.unit)+'">'+e(t.label)+'</a>':e(t.label))+(t.sub?' <span class="s">'+e(t.sub)+'</span>':'')+'<br><span class="s">'+e(X.allocText(a))+(L.allocs.length>1?' '+yen(a.amount):'')+'</span></span>'}).join('');
+ if(x.rest>0&&x.state!=='ok')h+='<span class="mz-alloc s" style="color:var(--warn)">未割り当て '+yen(x.rest)+'</span>';
+ return h;
+}
+function actsHtml(x){
+ if(closed())return '<span class="cap">締め済み</span>';
+ var id=e(x.row.id),lab=e(rowLabel(x.row)),b=function(act,txt,cls){return '<button type="button" class="act'+(cls?' '+cls:'')+'" data-act="'+act+'" data-id="'+id+'" aria-label="'+e(txt)+'：'+lab+'">'+e(txt)+'</button>'};
+ if(x.state==='auto')return b('confirm','確認する','ok')+b('edit','直す')+b('skip','紐付けない');
+ if(x.state==='none')return b('edit','直す')+b('skip','紐付けない')+(GK.ai&&GK.can('ai.match')?'<button type="button" class="act gk-ai-btn" data-act="aiask" data-id="'+id+'" aria-label="AIに候補を聞く：'+lab+'" aria-expanded="'+(!!S.ai&&S.ai.id===x.row.id)+'">AIに候補を聞く</button>':'');
+ if(x.state==='ok')return b('edit','直す')+b('reset','確認を取り消す');
+ return b('reset','紐付けに戻す');
+}
+/* 「AIに候補を聞く」 (2026-10-19): candidates only; choosing one opens 直す prefilled, nothing is confirmed by it */
+function aiRow(x){
+ var id=x.row.id,A=S.ai,P='ai-'+e(id);
+ var h='<tr class="mz-subrow"><td colspan="7"><div class="gk-ai mz-ai" role="group" aria-labelledby="'+P+'-t" id="'+P+'">'+GK.ai.head('match','入出金の紐付けの候補（'+rowLabel(x.row)+'）',P+'-t');
+ if(A.err)h+='<p class="gk-ai-none" id="'+P+'-none" tabindex="-1" role="alert">'+e(A.err)+'</p>';
+ else if(!A.list.length)h+='<p class="gk-ai-none" id="'+P+'-none" tabindex="-1">候補が見つかりませんでした。「直す」から部屋と用途を選んでください。</p>';
+ else h+='<ol class="gk-ai-cands">'+A.list.map(function(c,i){return '<li><div class="gk-ai-cand-h"><b>'+e(c.label)+'</b>'+GK.ai.confPill(c.conf)+'</div><ul class="gk-ai-why">'+c.reasons.map(function(r){return '<li>'+e(r)+'</li>'}).join('')+'</ul>'+
+  '<button type="button" class="btn" data-act="aipick" data-id="'+e(id)+'" data-i="'+i+'" aria-label="候補'+(i+1)+'で「直す」を開く：'+e(c.label)+'">この候補で「直す」を開く</button></li>'}).join('')+'</ol>';
+ h+='<p class="cap">候補を選ぶと「直す」に入ります。部屋・用途・金額を確かめて「この内容で確認する」を押すまで、何も確定しません。</p><div class="mz-row-btns"><button type="button" class="btn" data-act="aino" data-id="'+e(id)+'">閉じる</button></div></div></td></tr>';
+ return h;
+}
+function subRow(x){
+ var id=x.row.id;
+ if(S.ai&&S.ai.id===id&&x.state==='none'&&!closed()&&GK.ai&&GK.can('ai.match'))return aiRow(x);
+ if(S.over===id&&x.state==='auto'){
+  var nm=X.mon(X.addMonth(S.m,1));
+  return '<tr class="mz-subrow"><td colspan="7"><div class="confirmbar" role="alertdialog" aria-labelledby="ov-'+e(id)+'"><span id="ov-'+e(id)+'">'+yen(x.rest)+' 多く入っています（'+e(x.row.name)+'）。多い分をどうしますか？</span><span class="cb-acts"><button type="button" class="btn primary" data-act="adv" data-id="'+e(id)+'">前受け（'+nm+'分）にして確認</button><button type="button" class="btn" data-act="edit" data-id="'+e(id)+'">用途を分ける</button><button type="button" class="btn ghost" data-act="overno">やめる</button></span></div></td></tr>';
+ }
+ if(S.skip===id){
+  var d=S.skipD[id]||{r:'',t:''},R=['誤入金（返金する）','部屋に関係ない入出金','その他（下に書く）'];
+  return '<tr class="mz-subrow"><td colspan="7"><form class="mz-form" data-skipform="'+e(id)+'" novalidate><fieldset style="border:0;padding:0;margin:0"><legend class="cap">紐付けない理由（'+e(rowLabel(x.row))+'）</legend><div class="mz-radios">'+
+   R.map(function(r,i){return '<label><input type="radio" name="skr" value="'+e(r)+'" data-skr="'+e(id)+'"'+(d.r===r?' checked':'')+'>'+e(r)+'</label>'}).join('')+'</div></fieldset>'+
+   '<input type="text" id="sk-t" data-skt="'+e(id)+'" maxlength="100" value="'+e(d.t)+'" placeholder="例：口座の振替。返金は10/20に行う" aria-label="理由（ひとこと）">'+
+   '<p class="err" id="sk-err" role="alert"></p><div class="mz-row-btns"><button type="submit" class="btn primary">紐付けない</button><button type="button" class="btn" data-act="skipno">やめる</button></div></form></td></tr>';
+ }
+ return '';
+}
+function panelCheck(){
+ var R=X.rows(S.m),s=X.summary(S.m),list=rowsShown();
+ var cnt={all:R.length,none:s.none,auto:s.auto,ok:s.ok,in:R.filter(function(x){return x.dir==='in'}).length,out:R.filter(function(x){return x.dir==='out'}).length};
+ var props=GK.db.props;
+ var h='<div class="card-head"><h2>入出金の確認（'+e(mon())+'）</h2><span class="cap">1行が口座の1件の入出金です。部屋と用途を確かめて「確認する」を押します。</span></div>';
+ h+='<div class="toolbar"><div class="seg" role="group" aria-label="表示する行">'+FILTERS.map(function(f){return '<button type="button" data-f="'+f[0]+'" aria-pressed="'+(S.f===f[0])+'">'+f[1]+'（'+cnt[f[0]]+'）</button>'}).join('')+'</div>'+
+  '<select id="mzProp" aria-label="物件で絞り込む"><option value="">すべての物件</option>'+props.map(function(p){return '<option value="'+e(p.id)+'"'+(S.prop===p.id?' selected':'')+'>'+e(p.n)+'</option>'}).join('')+'<option value="-"'+(S.prop==='-'?' selected':'')+'>部屋なし（オーナー・会社・未定）</option></select></div>';
+ if(!closed()&&s.high)h+='<div class="mz-bulk"><button type="button" class="btn primary" data-act="bulk">自動の紐付けをまとめて確認（'+s.high+'件）</button><span class="cap">名義と金額がぴったり合った行だけを確認します。ほかの行は1件ずつ見てください。</span></div>';
+ if(!R.length)return h+'<p class="empty">'+e(mon())+'の口座の入出金はまだありません。<button type="button" class="link" data-go="import">取り込み</button>から入れてください。</p>';
+ if(!list.length)return h+'<p class="empty">この絞り込みに合う行はありません。<button type="button" class="link" data-f="all">すべて表示</button></p>';
+ h+='<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>日付</th><th class="num">金額</th><th>振込名義・内容</th><th>部屋・用途</th><th>理由</th><th>状態</th><th>操作</th></tr></thead><tbody>'+
+  list.map(function(x){var r=x.row;return '<tr id="row-'+e(r.id)+'" data-row="'+e(r.id)+'"><td data-label="日付">'+dt(r.date)+'</td><td data-label="金額" class="num">'+amt(r.amount)+'</td><td data-label="名義・内容"><span class="mz-name">'+e(r.name||'（内容なし）')+'</span></td><td data-label="部屋・用途">'+allocHtml(x)+'</td><td data-label="理由">'+chips(x.link)+'</td><td data-label="状態">'+pill(x.state)+(x.state==='ok'&&x.link.by?'<div class="s">'+e(x.link.by)+'</div>':'')+'</td><td class="mz-acts" data-label="操作">'+actsHtml(x)+'</td></tr>'+subRow(x)}).join('')+'</tbody></table></div>';
+ h+='<p class="cap">「確認する」を押すと、その部屋の家賃が入金済みになり、物件・台帳や契約の未収にも反映します。間違えたときは「確認を取り消す」で戻せます。</p>';
+ return h;
+}
+
+/* ---------- 直す (editor panel) ---------- */
+function targets(){
+ var out=[];
+ GK.db.props.forEach(function(p){(p.rooms||[]).forEach(function(no){var id=p.id+'-'+no,l=GK.activeLease(id),t=l&&GK.tenant(l.tenant);out.push({v:'u:'+id,l:p.n+' '+no+(t?' · '+t.n:' · 空室'),k:[p.n,no,id,t?t.n:'',t?t.k:'']})})});
+ GK.db.owners.forEach(function(o){out.push({v:'o:'+o.id,l:'オーナー：'+o.n,k:[o.n,o.k,'オーナー']})});
+ out.push({v:'c:',l:'会社（部屋なし）',k:['会社','部屋なし']});
+ return out;
+}
+function lineFromAlloc(a){return {use:a.use,tgt:a.unit?'u:'+a.unit:a.owner?'o:'+a.owner:'c:',month:a.month||S.m,amount:String(a.amount),q:'',repair:a.repair||'',charge:a.charge||'',prop:a.prop||''}}
+function openEdit(id,note,pre){
+ var Mo=M(),row=GK.by(Mo.bank,id),L=Mo.links[id];if(!row)return;
+ /* pre: allocations to start from (an AI candidate) instead of the link's own; nothing is saved until 「この内容で確認する」 */
+ var abs=Math.abs(row.amount),lines=(pre&&pre.length?pre:L&&L.allocs&&L.allocs.length?L.allocs:[]).map(lineFromAlloc);
+ var sum=lines.reduce(function(s,l){return s+(+l.amount||0)},0);
+ if(!lines.length)lines=[{use:row.amount>=0?'家賃':'修繕費',tgt:'',month:S.m,amount:String(abs),q:'',repair:'',charge:''}];
+ else if(sum<abs){var multi=X.roomsOf(L.allocs).length>1;lines.push({use:'家賃',tgt:multi?'':lines[0].tgt,month:X.addMonth(S.m,1),amount:String(abs-sum),q:'',repair:'',charge:''})}
+ S.edit={m:S.m,id:id,lines:lines,err:'',base:JSON.stringify(L||null),note:note||'',ret:document.activeElement};S.over=null;
+ renderEdit();
+ var f=document.querySelector('#panel [data-ed]');if(f)f.focus();
+}
+function closeEdit(){var r=S.edit&&S.edit.ret;S.edit=null;renderEdit();if(r&&document.body.contains(r))r.focus();else{var p=$('#mzPanel');if(p)p.focus()}}
+function edSum(){return S.edit.lines.reduce(function(s,l){return s+(+digits(l.amount)||0)},0)}
+function restInfo(){
+ var row=GK.by(X.month(S.edit.m).bank,S.edit.id);if(!row)return null;
+ var abs=Math.abs(row.amount),sum=edSum(),d=abs-sum;
+ return {cls:'mz-rest '+(d===0?'ok':d<0?'ng':''),text:(row.amount>=0?'入金':'出金')+' '+yen(abs)+' · 割り当て '+yen(sum)+' · '+(d===0?'ぴったりです':d>0?'あと '+yen(d):yen(-d)+' 多すぎます'),d:d};
+}
+function restHtml(){var r=restInfo();return r?'<p class="'+r.cls+'" id="edRest" aria-live="polite">'+e(r.text)+'</p>':''}
+function optsHtml(i){
+ var l=S.edit.lines[i],T=targets(),q=l.q.trim();
+ var list=T.filter(function(t){return t.v===l.tgt||GK.hit(q,t.k.concat([t.l]))});
+ if(!q&&l.use&&X.ROOM_USES[l.use])list=list.filter(function(t){return t.v.indexOf('u:')===0||t.v===l.tgt});
+ if(!q&&(l.use==='オーナー送金'||l.use==='借上賃料'))list=list.filter(function(t){return t.v.indexOf('o:')===0||t.v===l.tgt});
+ return (l.tgt?'':'<option value="" selected>（選んでください）</option>')+list.slice(0,300).map(function(t){return '<option value="'+e(t.v)+'"'+(t.v===l.tgt?' selected':'')+'>'+e(t.l)+'</option>'}).join('');
+}
+function lineHtml(l,i,n,dir){
+ var rent=X.RENT_USES[l.use],uses=dir==='in'?['家賃','共益費','更新料','敷金','礼金','その他','オーナー送金','借上賃料','修繕費','管理手数料','振込手数料']:['修繕費','オーナー送金','借上賃料','振込手数料','敷金','管理手数料','その他','家賃','共益費','更新料','礼金'];
+ var ms=[];for(var k=-3;k<=2;k++)ms.push(X.addMonth(S.edit.m,k));
+ return '<fieldset class="mz-line" style="margin:0"><legend class="sr">'+(i+1)+'行目</legend><div class="mz-line-h"><b>'+(i+1)+'行目</b>'+(n>1?'<button type="button" class="act" data-edrm="'+i+'" aria-label="'+(i+1)+'行目を消す">この行を消す</button>':'')+'</div>'+
+  '<div class="field"><label for="ed-u-'+i+'">用途</label><select id="ed-u-'+i+'" data-ed="use" data-i="'+i+'">'+uses.map(function(u){return '<option'+(u===l.use?' selected':'')+'>'+u+'</option>'}).join('')+'</select></div>'+
+  '<div class="field"><label for="ed-a-'+i+'">金額（円）</label><input type="text" inputmode="numeric" autocomplete="off" id="ed-a-'+i+'" data-ed="amount" data-i="'+i+'" value="'+e(l.amount)+'"></div>'+
+  '<div class="field wide"><label for="ed-q-'+i+'">'+(X.ROOM_USES[l.use]?'部屋':'相手（部屋・オーナー・会社）')+'</label><input type="search" id="ed-q-'+i+'" data-ed="q" data-i="'+i+'" value="'+e(l.q)+'" placeholder="物件名・部屋番号・名前で探す" autocomplete="off" aria-controls="ed-t-'+i+'">'+
+  '<select id="ed-t-'+i+'" data-ed="tgt" data-i="'+i+'" size="4" aria-label="'+(i+1)+'行目の'+(X.ROOM_USES[l.use]?'部屋':'相手')+'">'+optsHtml(i)+'</select></div>'+
+  (rent?'<div class="field wide"><label for="ed-m-'+i+'">何月分</label><select id="ed-m-'+i+'" data-ed="month" data-i="'+i+'">'+ms.map(function(m){return '<option value="'+m+'"'+(m===l.month?' selected':'')+'>'+X.monY(m)+'分'+(m>S.edit.m?'（前受け）':'')+'</option>'}).join('')+'</select></div>':'')+
+  '</fieldset>';
+}
+/* the editor is modal: the page behind it cannot be reached (inert) while it is open */
+function setInert(on){['.app','#topbar'].forEach(function(s){var n=document.querySelector(s);if(!n)return;try{n.inert=on}catch(x){}if(on)n.setAttribute('aria-hidden','true');else n.removeAttribute('aria-hidden')})}
+function renderEdit(){
+ var el=$('#panel');
+ setInert(!!S.edit);
+ if(!S.edit){el.innerHTML='';document.body.classList.remove('panel-side');return}
+ var E=S.edit,Mo=X.month(E.m),row=GK.by(Mo.bank,E.id);
+ if(!row){S.edit=null;el.innerHTML='';GK.toast('この入出金はほかの画面で取り込み直されたため、閉じました');return}
+ var dir=row.amount>=0?'in':'out',cands=X.candidates(E.m,row),abs=Math.abs(row.amount),d=abs-edSum();
+ var nm=X.addMonth(E.m,1),firstU=(E.lines.filter(function(l){return l.tgt.indexOf('u:')===0})[0]||{}).tgt;
+ var h='<div class="scrim" data-act="edclose"></div><aside class="panel mz-ed" role="dialog" aria-modal="true" aria-labelledby="edT"><div class="panel-head"><h2 id="edT">部屋と用途を直す</h2><button type="button" class="btn ghost" data-act="edclose">閉じる</button></div><div class="panel-body">'+
+  (E.note?'<p class="sync-note" role="status">'+e(E.note)+'</p>':'')+
+  '<dl class="mz-dl"><dt>日付</dt><dd>'+dt(row.date)+'</dd><dt>金額</dt><dd>'+amt(row.amount)+'</dd><dt>名義・内容</dt><dd>'+e(row.name)+'</dd></dl>'+
+  (cands.length?'<div><h3>候補（押すと下に入ります）</h3><div class="mz-cands">'+cands.map(function(c,i){return '<button type="button" class="act" data-edcand="'+i+'">'+e(c.label)+'<br><span class="cap">'+e(c.why)+'</span></button>'}).join('')+'</div></div>':'')+
+  '<div><h3>割り当て</h3><div style="display:flex;flex-direction:column;gap:10px">'+E.lines.map(function(l,i){return lineHtml(l,i,E.lines.length,dir)}).join('')+'</div></div>'+
+  '<div class="mz-row-btns"><button type="button" class="btn" data-act="edadd">＋ 行を足す（部屋・月・用途を分ける）</button>'+(d>0&&firstU&&dir==='in'?'<button type="button" class="btn" data-act="edadv">残り '+yen(d)+' を前受け（'+X.mon(nm)+'分）にする</button>':'')+'</div>'+
+  restHtml()+
+  '<p class="err" id="edErr" role="alert">'+e(E.err)+'</p>'+
+  '<div class="mz-sticky"><button type="button" class="btn primary" data-act="edsave" id="edSave"'+(d!==0?' aria-disabled="true"':'')+'>この内容で確認する</button><button type="button" class="btn" data-act="edclose">やめる</button></div>'+
+  '<p class="cap">合計が入出金の金額とぴったり同じになると確認できます。家賃・共益費はその月の請求に入金として付きます。</p>'+
+  '</div></aside>';
+ el.innerHTML=h;
+ el._cands=cands;
+}
+function updRest(){var r=$('#edRest'),i=restInfo();if(!r||!i)return;r.className=i.cls;r.textContent=i.text;
+ var b=$('#edSave');if(b){if(i.d===0)b.removeAttribute('aria-disabled');else b.setAttribute('aria-disabled','true')}}
+function edAllocs(){
+ return S.edit.lines.map(function(l){
+  var a={use:l.use,amount:+digits(l.amount)||0,month:l.month};
+  if(l.tgt.indexOf('u:')===0)a.unit=l.tgt.slice(2);else if(l.tgt.indexOf('o:')===0)a.owner=l.tgt.slice(2);
+  if(l.repair&&l.use==='修繕費')a.repair=l.repair;if(l.charge)a.charge=l.charge;if(l.prop&&l.use==='借上賃料')a.prop=l.prop;
+  return a;
+ });
+}
+function edSave(){
+ var E=S.edit,r=X.setAllocs(E.m,E.id,edAllocs());
+ if(!r.ok){E.err=r.msg;keep(renderEdit);var er=$('#edErr');if(er)er.textContent=r.msg;var f=r.line!=null?document.getElementById('ed-a-'+r.line):null;if(f)f.focus();else if(er){er.setAttribute('tabindex','-1');er.focus()}return}
+ var row=GK.by(X.month(E.m).bank,E.id),rid=E.id;S.edit=null;renderEdit();render();
+ var tr=document.getElementById('row-'+rid);var b=tr&&tr.querySelector('button');if(b)b.focus();
+ GK.toast('直して確認しました（'+(row?rowLabel(row):'')+'）',function(){r.undo();render();GK.toast('元に戻しました')});
+}
+
+/* ---------- MFとの照合 ---------- */
+function entryHtml(x,cls){if(!x)return '<span class="cap">—</span>';return '<span class="mz-entry'+(cls?' '+cls:'')+'">'+e(X.entryText(x))+' <b>'+yen(x.amount)+'</b>'+(x.memo?'<br><span class="s">摘要：'+e(x.memo)+'</span>':'')+'</span>'}
+function mfToEntry(p){return p?{dir:p.dir,amount:p.amount,bank:p.bank,other:p.other,memo:p.memo}:null}
+function mfPill(s){var c={ok:'ok',pending:'',nomf:'',missing:'danger',extra:'danger'}[s];return '<span class="pill '+(c===undefined?'warn':c)+'">'+e(X.mfLabel[s]||s)+'</span>'}
+function panelMf(){
+ var R=X.mfCompare(S.m),Mo=M(),bad=R.items.filter(function(i){return ['ok','pending','nomf'].indexOf(i.state)<0});
+ var last=Mo.imports.filter(function(i){return i.kind==='mf'}).slice(-1)[0];
+ var h='<div class="card-head"><h2>マネーフォワードとの照合（'+e(mon())+'）</h2>'+(!closed()?'<button type="button" class="btn" data-go="import">MFのCSVを取り込み直す</button>':'')+'</div>';
+ if(!R.loaded)return h+'<p class="empty">'+e(mon())+'のマネーフォワードのCSVはまだ取り込んでいません。<button type="button" class="link" data-go="import">取り込み</button>から入れると、口座の入出金と1件ずつ照合します。</p>';
+ if(R.bankSub)h+='<div class="mz-msg ng" role="alert"><b>MFの'+e(X.settings().bankAcct)+'の補助科目が『'+e(R.bankSub)+'』です。設定の口座名『'+e(X.setFor(S.m).bankName)+'』と違うため照合できません。</b>'+(closed()?'<span>締め済みの月は、締めたときの設定で照合します。</span>':'<span><button type="button" class="btn primary" data-act="banksub" data-v="'+e(R.bankSub)+'">設定を合わせる（口座名を『'+e(R.bankSub)+'』にする）</button></span>')+'</div>';
+ h+='<p class="cap">口座の1件ごとに、設定の勘定科目から「入るはずの仕訳」を作り、MFの仕訳と比べます（日付は3日までのずれを同じ取引とみなします）。'+(last?'MFのCSV：'+e(last.sample?'見本':last.file||'ファイル')+'（'+e(GK.sd(String(last.at).slice(0,10)))+' 取り込み）。':'')+'</p>';
+ h+=bad.length?'<p class="warnbox">食い違いが '+bad.length+'件あります。下の「直し方」のとおりMFで直したら、CSVを取り込み直してください。</p>':'<p class="empty-ok">食い違いはありません。'+(R.items.some(function(i){return i.state==='pending'})?'（入出金の確認が先の行があります）':'')+'</p>';
+ h+='<div class="toolbar"><div class="seg" role="group" aria-label="表示する行"><button type="button" data-mfall="0" aria-pressed="'+!S.mfAll+'">食い違いだけ（'+bad.length+'）</button><button type="button" data-mfall="1" aria-pressed="'+S.mfAll+'">すべて（'+R.items.length+'）</button></div></div>';
+ var list=S.mfAll?R.items:bad;
+ if(!list.length)return h+'<p class="empty">表示する行はありません。</p>';
+ h+='<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>日付</th><th class="num">金額</th><th>口座の内容</th><th>入るはずの仕訳</th><th>MFの仕訳</th><th>状態</th><th>直し方</th></tr></thead><tbody>'+
+  list.map(function(i){
+   var r=i.row,date=r?r.date:i.mf.date;
+   var exp=i.lines&&i.lines.length?i.lines.map(function(l){return l.any?'<span class="mz-entry">（紐付けない行：金額だけ照合）<b>'+yen(l.exp.amount)+'</b></span>':entryHtml(l.exp)}).join('<br>'):i.state==='pending'?'<span class="cap">まだ決まっていません</span>':'<span class="cap">—</span>';
+   var got=i.lines&&i.lines.length?i.lines.map(function(l){return l.mf?entryHtml(mfToEntry(l.mf))+(l.shift?'<br><span class="chip">日付ずれ'+l.shift+'日</span>':''):'<span class="cap">MFに見つかりません</span>'}).join('<br>'):i.mf?entryHtml(mfToEntry(i.mf)):'<span class="cap">—</span>';
+   if(i.agg)got+='<br><span class="chip">1行にまとめて入力</span>';
+   var go=r&&i.state==='pending'&&!closed()?'<button type="button" class="act" data-act="edit" data-id="'+e(r.id)+'">部屋と用途を決める</button>':'';
+   return '<tr><td data-label="日付">'+dt(date)+'</td><td data-label="金額" class="num">'+(r?amt(r.amount):amt(i.mf.dir==='in'?i.mf.amount:-i.mf.amount))+'</td><td data-label="口座の内容">'+(r?'<span class="mz-name">'+e(r.name)+'</span>':'<span class="cap">口座にありません</span>')+'</td><td data-label="入るはず">'+exp+'</td><td data-label="MF">'+got+'</td><td data-label="状態">'+mfPill(i.state)+'</td><td data-label="直し方">'+(i.fix.length?'<ul class="mz-list mz-fix">'+i.fix.map(function(f){return '<li>'+e(f)+'</li>'}).join('')+'</ul>':'<span class="cap">なし</span>')+go+'</td></tr>';
+  }).join('')+'</tbody></table></div>';
+ if(bad.length)h+='<p class="cap">MFで直したら、CSVを取り込み直してください。取り込み直すと、この一覧が新しくなります。</p>';
+ return h;
+}
+
+/* ---------- オーナー送金 ---------- */
+var RS={draft:['','下書き'],fixed:['info','明細を確定'],sent:['ok','送金済み']};
+function kid(key){return String(key).replace(/[^\w-]/g,'-')}
+function remitBtns(r,st,key,o){
+ var k=e(key),b='<div class="mz-row-btns">';
+ if(r.state==='draft')b+='<button type="button" class="btn primary" data-act="fix" data-o="'+k+'"'+(st.pending?' aria-disabled="true"':'')+'>明細を確定</button>';
+ if(r.state==='fixed'){if(st.net>0)b+='<button type="button" class="btn primary" data-act="sent" data-o="'+k+'">送金済みにする（銀行で振り込んだあと）</button>';b+='<button type="button" class="btn" data-act="unfix" data-o="'+k+'">確定を取り消す</button>'}
+ if(r.state==='sent')b+='<span class="cap">送金済み（'+e(GK.sd(String(r.sentAt).slice(0,10)))+' '+e(r.sentBy||'')+'）</span><button type="button" class="btn" data-act="unsent" data-o="'+k+'">送金済みを取り消す</button>';
+ b+='<button type="button" class="btn" data-act="copytxt" data-o="'+k+'">文面をコピー</button></div>';
+ return b+'<details><summary class="cap" style="cursor:pointer;min-height:32px">明細の文面を見る</summary><textarea class="mz-text" id="txt-'+kid(key)+'" readonly aria-label="'+e(o.n)+' 様の明細の文面">'+e(X.statementText(st))+'</textarea></details>';
+}
+function leaseCard(tg){
+ var o=tg.owner,key=tg.key,r=X.remitOf(S.m,key),st=X.shown(S.m,key);if(!st)return '';
+ var id=kid(key),pp=RS[r.state]||RS.draft;
+ var h='<section class="mz-owner" aria-labelledby="ow-'+id+'"><div class="mz-owner-h"><div><h3 id="ow-'+id+'">'+e(o.n)+' 様 · 借上賃料 <span class="pill '+pp[0]+'">'+pp[1]+'</span></h3><p class="cap">サブリース（毎月決まった額を払います。管理手数料は引きません） · 支払予定日 '+dt(st.payDate)+'</p></div></div>';
+ h+='<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>物件</th><th>内容</th><th class="num">金額</th></tr></thead><tbody>'+st.items.map(function(x){return '<tr><td data-label="物件">'+e(x.name)+'</td><td data-label="内容">'+e(X.monY(st.m))+'分 借上賃料</td><td data-label="金額" class="num">'+yen(x.amount)+'</td></tr>'}).join('')+'</tbody></table></div>';
+ h+='<dl class="mz-tot"><dt class="net">支払額</dt><dd class="net">'+yen(st.net)+'</dd></dl>';
+ return h+remitBtns(r,st,key,o)+'</section>';
+}
+function ownerCard(tg){
+ var o=tg.owner,key=tg.key,r=X.remitOf(S.m,key),st=X.shown(S.m,key);if(!st)return '';
+ var id=kid(key),pp=RS[r.state]||RS.draft;
+ var h='<section class="mz-owner" aria-labelledby="ow-'+id+'"><div class="mz-owner-h"><div><h3 id="ow-'+id+'">'+e(o.n)+' 様 <span class="pill '+pp[0]+'">'+pp[1]+'</span></h3><p class="cap">'+e(st.props.join('、'))+'（管理受託） · 送金予定日 '+dt(st.payDate)+'</p></div></div>';
+ if(r.state==='draft'&&st.pending)h+='<p class="warnbox">この方の部屋に確認待ちの入出金が '+st.pending+'件あります。確認すると明細に入ります。<button type="button" class="link" data-go="check:auto">入出金の確認へ</button></p>';
+ if(r.state==='draft'&&st.check)h+='<p class="note">要確認の入出金が '+st.check+'件あります（この方の部屋の入金かもしれません）。</p>';
+ if(st.changed&&r.state!=='draft')h+='<p class="note">明細を確定したあとで入出金が変わりました。直すときは「確定を取り消す」で作り直してください。</p>';
+ h+='<div class="tbl-wrap"><table class="tbl cards"><thead><tr><th>部屋</th><th>入居者</th><th>内容</th><th class="num">金額</th></tr></thead><tbody>'+
+  (st.lines.length?st.lines.map(function(l){
+   var it=l.items.map(function(i){return e(X.monY(i.month)+'分 '+yen(i.amount)+'（'+GK.sd(i.date)+' 入金）')}).join('<br>');
+   var un=l.unpaid.length?'<span class="pill danger">未入金</span> '+e(l.unpaid.map(function(u){return X.monY(u.month)+'分 '+yen(u.amount)}).join('、')):'';
+   return '<tr><td data-label="部屋"><a href="properties.html#room-'+e(l.unit)+'">'+e(l.room)+'</a></td><td data-label="入居者">'+(l.tenant?e(l.tenant)+' 様':'<span class="cap">—</span>')+'</td><td data-label="内容">'+it+(it&&un?'<br>':'')+un+'</td><td data-label="金額" class="num">'+(l.amount?yen(l.amount):'<span class="cap">送金に含めません</span>')+'</td></tr>'}).join(''):'<tr><td colspan="4" class="empty">この月の入金・未入金はありません。</td></tr>')+
+  '</tbody></table></div>';
+ h+='<dl class="mz-tot"><dt>集めた家賃・共益費（確認済み）</dt><dd>'+yen(st.collected)+'</dd>'+
+  (st.otherItems||[]).map(function(x){return '<dt>'+e(x.use)+' '+e(GK.roomLabel(x.unit))+'（オーナーへ送金）</dt><dd>'+yen(x.amount)+'</dd>'}).join('')+
+  (st.fees||[]).map(function(f){return '<dt>'+(st.fees.length>1?e(f.name)+' ':'')+e(f.basis)+'</dt><dd>−'+yen(f.fee)+'</dd>'}).join('')+
+  (st.tax?'<dt>消費税（10%・税抜の手数料 合計に）</dt><dd>−'+yen(st.tax)+'</dd>':'')+
+  st.repairs.map(function(x){return '<dt>修繕費 '+e(GK.roomLabel(x.unit))+' '+e(x.label)+'</dt><dd>−'+yen(x.amount)+'</dd>'}).join('')+
+  (st.repairs.length?'':'<dt>修繕費</dt><dd>−'+yen(0)+'</dd>')+
+  '<dt>振込手数料'+(st.remitFee?'（オーナー負担）':'（会社負担）')+'</dt><dd>−'+yen(st.remitFee)+'</dd>'+
+  (st.carry?'<dt>前月からの繰り越し</dt><dd>'+yen(st.carry)+'</dd>':'')+
+  (st.net>0?'<dt class="net">送金額</dt><dd class="net">'+yen(st.net)+'</dd>':'<dt class="net">送金額</dt><dd class="none">'+e(X.netText(st.net))+'</dd>')+'</dl>';
+ if(st.adv&&st.adv.length)h+='<p class="cap">前受け：'+st.adv.map(function(a){return e(GK.roomLabel(a.unit))+' '+X.monY(a.month)+'分 '+yen(a.amount)}).join('、')+'（その月の明細に入ります）</p>';
+ return h+remitBtns(r,st,key,o)+'</section>';
+}
+function panelRemit(){
+ var tg=X.remitTargets(S.m),ids=tg.map(function(t){return t.owner.id}),others=GK.db.owners.filter(function(o){return ids.indexOf(o.id)<0&&GK.db.props.some(function(p){return p.owner===o.id})});
+ var h='<div class="card-head"><h2>オーナー送金（'+e(mon())+'分）</h2><span class="cap">管理受託の送金明細と、サブリースの借上賃料です。確認済みの入出金から作ります。</span></div>';
+ h+='<p class="cap">流れ：下書き → 「明細を確定」 → 銀行で振り込む（総合振込） → 「送金済みにする」。送金予定日は翌月の設定日です（設定で変えられます）。'+(closed()?'締め済みの月でも、送金の記録だけはできます。':'')+'</p>';
+ if(!tg.length)h+='<p class="empty">この月は送金する相手がいません。</p>';
+ h+=tg.map(function(t){return t.kind==='lease'?leaseCard(t):ownerCard(t)}).join('');
+ if(others.length)h+='<p class="note">'+e(others.map(function(o){return o.n}).join('、'))+' 様の物件は自社所有（または借上賃料が未設定）なので、送金はありません。</p>';
+ if(!GK.can('money.transfer'))return h;
+ var Z=X.zengin(S.m);
+ h+='<div class="mz-sec" style="border-top:1px solid var(--line);padding-top:14px"><h3>総合振込データ</h3>'+
+  '<p class="cap">「明細を確定」した分から、全銀協フォーマット（1行120文字・半角カナ）の振込データを作ります。銀行のサービスの『総合振込』でこのデータを取り込みます。</p>';
+ if(Z.errors.length)h+='<div class="mz-msg ng" role="alert">'+Z.errors.map(function(x){return '<span>'+e(x)+'</span>'}).join('')+'<span><button type="button" class="link" data-go="settings">設定を開く</button></span></div>';
+ if(Z.excluded.length)h+='<div class="mz-msg ng" role="alert"><b>次の方は口座の情報が足りないため、振込データに入れていません。</b><ul class="mz-list">'+Z.excluded.map(function(x){return '<li>'+e(x.name)+' 様・'+e(x.kind)+'（'+yen(x.amount)+'）：'+e(x.reason)+'</li>'}).join('')+'</ul><span>オーナーの送金先の口座（例：架空銀行 南町支店 普通 1234567）を確かめてください。</span></div>';
+ if(!Z.included.length)h+='<p class="empty">振込データに入る明細はありません。'+(tg.length?'明細を確定すると、ここにデータができます。':'')+'</p>';
+ else{
+  h+='<ul class="mz-list">'+Z.included.map(function(x){return '<li>'+e(x.name)+' 様・'+e(x.kind)+' '+yen(x.amount)+'（'+e(GK.sd(x.date))+' 振込・'+e(x.b.bank+' '+x.b.branch+' '+x.b.type+' '+x.b.acct.replace(/\d(?=\d{3})/g,'*'))+'）</li>'}).join('')+'</ul><p class="cap">合計 '+Z.included.length+'件 '+yen(Z.total)+'</p>'+
+   (Z.files.length>1?'<p class="cap">送金日が '+Z.files.length+'つあるので、振込データも送金日ごとに分けています。銀行には1つずつ取り込んでください。</p>':'')+
+   Z.files.map(function(F,i){return '<div class="mz-box"><h3>'+e(GK.sdw(F.date))+' 振込分 · '+F.count+'件 · 合計 '+yen(F.total)+'</h3><p class="cap">'+e(F.names.join('、'))+' 様</p><pre class="mz-zengin" id="zg-'+i+'" tabindex="0" aria-label="'+e(GK.sd(F.date))+' 振込分の総合振込データ（'+F.lines.length+'行）">'+e(F.text)+'</pre><div class="mz-row-btns"><button type="button" class="btn primary" data-act="copyzg" data-i="'+i+'">'+e(GK.sd(F.date))+' 振込分をコピー</button></div></div>'}).join('')+
+   '<p class="cap">この画面ではファイルを保存できません。コピーしてメモ帳に貼り付け、文字コード「ANSI」で保存してから、銀行のサービスで取り込んでください。</p>';
+ }
+ return h+'</div>';
+}
+
+/* ---------- 締め ---------- */
+function panelClose(){
+ var Mo=M(),c=Mo.closed,h='<h2>締め（'+e(mon())+'）</h2>';
+ if(c){
+  h+='<p class="mz-banner closed">'+e(mon())+'は締め済み（'+e(GK.sd(c.at))+' '+e(c.by)+'）</p><p class="cap">締めた月は見るだけです（取り込み・確認・直す はできません）。オーナー送金の記録だけはできます。仕訳の照合は、締めたときの設定のままです。</p>';
+  if(!S.reopen)h+='<div class="mz-row-btns"><button type="button" class="btn danger" data-act="reopen">締めを解除</button></div>';
+  else h+='<form class="mz-form" id="reopenForm" novalidate><label for="ro-t">締めを解除する理由<span class="req">必須</span></label><textarea id="ro-t" rows="3" maxlength="200" class="mz-text" style="min-height:80px" placeholder="例：MFの仕訳を1件直すため">'+e(S.reopenText)+'</textarea><p class="err" id="ro-err" role="alert"></p><div class="mz-row-btns"><button type="submit" class="btn danger">理由を残して締めを解除</button><button type="button" class="btn" data-act="reopenno">やめる</button></div></form>';
+ }else{
+  var b=X.blockers(S.m);
+  h+='<p class="cap">要確認・確認待ちの入出金とMFとの食い違いがなくなると、'+e(mon())+'を締められます。締めた月は見るだけになります。</p>';
+  h+=b.length?'<ul class="mz-check">'+b.map(function(x){return '<li><span>'+e(x.t)+'</span><button type="button" class="link" data-go="'+x.tab+(x.f?':'+x.f:'')+'">'+(x.tab==='import'?'取り込みへ':x.tab==='mf'?'MFとの照合へ':'入出金の確認へ')+'</button></li>'}).join('')+'</ul>':'<ul class="mz-check"><li class="ok">残っている作業はありません。</li></ul>';
+  h+=(b.length?'<p id="closeWhy">まだ締められません。残っている作業：'+b.map(function(x){return e(x.t)}).join(' ')+'（上の一覧から開けます）</p>':'')+'<div class="mz-row-btns"><button type="button" class="btn primary" data-act="close"'+(b.length?' disabled aria-describedby="closeWhy"':'')+'>'+e(X.mon(S.m))+'を締める</button></div>';
+ }
+ /* 経理への引継ぎ (added 2026-10-19): 締め → 管理部売上で売上を確定 → 経理へ提出 */
+ if(GK.can('page.sales')){var ac=GK.acctLatest(S.m),acl={received:'ok',submitted:'info',returned:'danger',withdrawn:'warn'}[ac.state]||'';
+  h+='<div class="mz-sec" id="mzAcct" style="border-top:1px solid var(--line);padding-top:14px"><h3>経理への引継ぎ（'+e(mon())+'分）</h3><p><span class="pill '+acl+'">'+e(ac.label+(ac.ver?'（第'+ac.ver+'版）':''))+'</span></p>'+
+   (ac.state==='returned'?'<p class="mz-banner">経理から差し戻されています。理由：'+e(ac.reason)+'。締めを解除して直し、締め直してから、管理部売上で再提出してください。</p>':'')+
+   '<p class="cap">'+(c?'締めたあとは「管理部売上」で'+e(X.mon(S.m))+'の売上を確定してから、「経理へ提出」します。':'締めると、「管理部売上」で売上を確定して「経理へ提出」できます（締める前は提出できません）。')+'</p>'+
+   '<div class="mz-row-btns"><a class="btn" href="sales.html#tab-sales'+(S.m!==X.cur()?'-'+S.m:'')+'">経理へ提出（管理部売上）</a></div></div>'}
+ var lg=Mo.closeLog.slice().reverse();
+ if(lg.length)h+='<div class="mz-sec" style="border-top:1px solid var(--line);padding-top:14px"><h3>締めの記録</h3><ul class="rows">'+lg.map(function(x){return '<li><span class="main-t">'+({close:'締めました',reopen:'締めを解除',undo:'元に戻しました'}[x.act]||x.act)+(x.reason?'<div class="sub">理由：'+e(x.reason)+'</div>':'')+'</span><span class="end">'+e(GK.sd(String(x.at).slice(0,10)))+' '+e(String(x.at).slice(11,16))+'<br>'+e(x.by)+'</span></li>'}).join('')+'</ul></div>';
+ return h;
+}
+
+/* ---------- 設定 ---------- */
+function setDraft(){if(!S.set)S.set={d:X.clone(X.settings()),base:JSON.stringify(X.settings())};return S.set.d}
+function setDirty(){return S.set&&JSON.stringify(S.set.d)!==S.set.base}
+/* 滞納の段階 (2026-10-19, GK.dun in ganki-data.js): its own small form with its own 保存 (it is not part of the 入出金 settings) */
+function dunDraft(){if(!S.dun){var s=GK.dun.settings(),d={d1:String(s.d1),d2:String(s.d2),d3:String(s.d3),d4:String(s.d4),d5:String(s.d5),d6:String(s.d6),order:s.order.slice(),gua:{}};Object.keys(s.gua).forEach(function(n){var g=s.gua[n];d.gua[n]={rule:g.rule,n:String(g.n),tel:g.tel,who:g.who}});S.dun={d:d,base:JSON.stringify(d)}}return S.dun.d}
+function dunDirty(){return !!(S.dun&&JSON.stringify(S.dun.d)!==S.dun.base)}
+function dunSec(){
+ if(!GK.dun||!GK.can('money.dunning'))return '';
+ var d=dunDraft(),names=Object.keys(d.gua);
+ var num=function(k,lab,cap){return '<div class="field"><label for="dun-'+k+'">'+lab+'</label><input type="text" inputmode="numeric" id="dun-'+k+'" data-dunset="'+k+'" value="'+e(d[k])+'" aria-describedby="dun-'+k+'-c"><span class="cap" id="dun-'+k+'-c">'+cap+'</span></div>'};
+ var h='<div class="mz-sec" id="dunSec"><h3>滞納の段階（家賃の連絡と保証会社への請求）</h3><p class="cap">家賃の入金がない契約は、ホームの「今日確認すること」に次の段階が出ます。日数を変えると、まだ済んでいない段階の予定日が変わります。'+(dunDirty()?' <b class="mz-dirty" role="status">保存していない変更があります</b>':'')+'</p>'+
+  '<div class="mz-grid">'+num('d1','1回目の連絡：支払日の何日後','0なら支払日の当日（標準は1日後＝翌日）')+num('d2','2回目の連絡：1回目の何日後','標準は7日後')+num('d3','保証会社への請求：2回目の何日後','標準は7日後。保証会社の期限より後にはなりません')+'</div>'+
+  /* 保証会社のない契約: after 2回目, in this order (each N days after the step before); then 「ここから先は担当者が判断します」 */
+  '<h3 style="margin-top:6px">保証会社のない契約（2回目の連絡のあと）</h3><p class="cap">この順に進みます。最後の段階のあとは「'+e(GK.dun.MANUAL)+'」と出ます。契約ごとに段階を飛ばすこともできます。</p><ol class="dun-order">'+d.order.map(function(sn,i){var nm=GK.dun.STEP[sn];
+   return '<li><div class="field"><label for="dun-d'+sn+'">'+(i+1)+'. '+e(nm)+'：前の段階の何日後</label><input type="text" inputmode="numeric" id="dun-d'+sn+'" data-dunset="d'+sn+'" value="'+e(d['d'+sn])+'"></div><span class="dun-mv"><button type="button" class="act" data-act="dunup" data-id="'+sn+'"'+(i?'':' disabled')+' aria-label="「'+e(nm)+'」を前へ">↑ 前へ</button><button type="button" class="act" data-act="dundown" data-id="'+sn+'"'+(i<2?'':' disabled')+' aria-label="「'+e(nm)+'」を後ろへ">↓ 後ろへ</button></span></li>'}).join('')+'</ol>';
+ h+='<h3 style="margin-top:6px">保証会社ごとの請求期限と連絡先</h3>'+(names.length?'<div class="mz-two">'+names.map(function(n,i){var g=d.gua[n],days=g.rule==='days',id='dun-g'+i;
+   return '<div class="mz-box"><h3>'+e(n)+'</h3><div class="mz-grid">'+
+    '<div class="field"><label for="'+id+'-r">請求期限の決め方</label><select id="'+id+'-r" data-dunset="rule" data-gua="'+e(n)+'"><option value="next"'+(days?'':' selected')+'>支払日の月の翌月の日付まで</option><option value="days"'+(days?' selected':'')+'>滞納が始まってからの日数以内</option></select></div>'+
+    '<div class="field"><label for="'+id+'-n">'+(days?'何日以内（1〜120）':'翌月の何日まで（1〜28）')+'</label><input type="text" inputmode="numeric" id="'+id+'-n" data-dunset="n" data-gua="'+e(n)+'" value="'+e(g.n)+'"></div>'+
+    '<div class="field"><label for="'+id+'-t">請求の連絡先（電話）</label><input type="tel" inputmode="tel" autocomplete="off" id="'+id+'-t" data-dunset="tel" data-gua="'+e(n)+'" value="'+e(g.tel)+'"></div>'+
+    '<div class="field"><label for="'+id+'-w">窓口・担当（任意）</label><input type="text" id="'+id+'-w" data-dunset="who" data-gua="'+e(n)+'" value="'+e(g.who)+'" maxlength="40"></div></div>'+
+    '<p class="cap">いまの決め方：'+e(GK.dun.ruleText({rule:g.rule,n:+GK.num(g.n)||g.n}))+'</p></div>'}).join('')+'</div>':'<p class="cap">契約に保証会社が登録されていません。保証会社のある契約ができると、ここで期限を決められます（決めるまでは「支払日の月の翌月10日まで」）。</p>');
+ return h+'<p class="err" id="dunErr" role="alert"></p><div class="mz-row-btns"><button type="button" class="btn primary" data-act="dunsave">滞納の設定を保存</button><button type="button" class="btn" data-act="duncancel"'+(dunDirty()?'':' disabled')+'>変更をやめる</button></div></div>';
+}
+function dunPut(t){var d=dunDraft(),k=t.dataset.dunset,g=t.getAttribute('data-gua');if(g!=null){if(d.gua[g])d.gua[g][k]=t.value}else d[k]=t.value}
+function dunSave(){
+ var d=dunDraft(),er=$('#dunErr');document.querySelectorAll('[data-dunset][aria-invalid]').forEach(function(x){x.removeAttribute('aria-invalid')});
+ var r=GK.dun.saveSettings(d);
+ if(!r.ok){if(er)er.textContent=r.msg;var f=r.field&&r.field.indexOf('gua:')===0?document.querySelector('[data-dunset="n"][data-gua="'+String(r.field.slice(4)).replace(/["\\]/g,'\\$&')+'"]'):r.field?$('#dun-'+r.field):null;if(f){f.setAttribute('aria-invalid','true');f.focus()}return}
+ S.dun=null;keep(render);GK.toast('滞納の設定を保存しました',function(){r.undo();S.dun=null;render();GK.toast('滞納の設定を元に戻しました')});
+}
+function panelSettings(){
+ var d=setDraft(),h='<div class="card-head"><h2>設定</h2>'+(setDirty()?'<span class="mz-dirty" role="status">保存していない変更があります</span>':'')+'</div><p class="cap">設定は全部の月で使います。締めた月は、締めたときの設定のままです。</p>';
+ h+=dunSec();
+ h+='<div class="mz-sec"><h3>物件ごとの設定</h3><p class="cap">管理受託：家賃はオーナーの預り金（送金明細を作ります）。サブリース：家賃は会社の売上で、オーナーには毎月決まった借上賃料を払います。自社所有：家賃は会社の売上です。</p><div class="mz-two">'+GK.db.props.map(function(p){return propBox(p,d)}).join('')+'</div></div>';
+ h+='<div class="mz-sec"><h3>用途ごとの勘定科目（マネーフォワード）</h3><p class="cap">入金のときは貸方、出金のときは借方に入る科目です。反対側は「'+e(d.bankAcct)+'（補助科目：口座名）」です。［オーナー名］［物件名］［口座名］と書くと、部屋ごとに自動で入ります。</p>'+
+  '<div class="seg" role="group" aria-label="会計の扱い">'+X.TREATS.map(function(t){return '<button type="button" data-sett="'+t[0]+'" aria-pressed="'+(S.setT===t[0])+'">'+t[1]+'</button>'}).join('')+'</div>'+
+  '<div class="tbl-wrap"><table class="tbl cards mz-map"><thead><tr><th>用途</th><th>勘定科目</th><th>補助科目</th><th>部門</th></tr></thead><tbody>'+
+  X.MAP_KEYS.filter(function(u){return S.setT==='受託'||u.indexOf('（会社の収入）')<0}).map(function(u){var r=d.map[S.setT][u]||['','',''],k=S.setT+'.'+u;return '<tr><td data-label="用途"><b>'+u+'</b></td>'+[0,1,2].map(function(j){return '<td data-label="'+['勘定科目','補助科目','部門'][j]+'"><input type="text" data-set="map.'+e(k)+'.'+j+'" value="'+e(r[j])+'" aria-label="'+e(X.treatLabel(S.setT))+'・'+u+'の'+['勘定科目','補助科目','部門'][j]+'"'+(j===0?' aria-required="true"':'')+'></td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'+
+  '<div class="mz-row-btns"><button type="button" class="btn" data-act="mapdef">'+e(X.treatLabel(S.setT))+'を標準の科目に戻す</button></div></div>';
+ h+='<div class="mz-sec"><h3>口座（銀行側の科目）</h3><div class="mz-grid"><div class="field"><label for="st-ba">勘定科目</label><input type="text" id="st-ba" data-set="bankAcct" value="'+e(d.bankAcct)+'"></div><div class="field"><label for="st-bn">補助科目（口座名）</label><input type="text" id="st-bn" data-set="bankName" value="'+e(d.bankName)+'"></div></div></div>';
+ var own=d.remitFee>0;
+ h+='<div class="mz-sec"><h3>振込手数料（オーナー送金）</h3><fieldset style="border:0;padding:0;margin:0"><legend class="sr">振込手数料の負担</legend><div class="mz-radios"><label><input type="radio" name="feeBy" data-setfee="0"'+(own?'':' checked')+'>会社が負担する（¥0）</label><label><input type="radio" name="feeBy" data-setfee="1"'+(own?' checked':'')+'>オーナーの送金額から引く</label></div></fieldset>'+
+  (own?'<div class="field" style="max-width:220px"><label for="st-fee">引く金額（円）</label><input type="text" inputmode="numeric" id="st-fee" data-set="remitFee" value="'+e(String(d.remitFee))+'"></div>':'')+'</div>';
+ var os=X.ownersFor(S.m);
+ h+='<div class="mz-sec"><h3>オーナーごとの設定</h3><div class="mz-two">'+GK.db.owners.map(function(o){var v=+d.remitDay[o.id]||25,opts='',ff=d.feeFree[o.id]||'';for(var i=1;i<=31;i++)opts+='<option value="'+i+'"'+(i===v?' selected':'')+'>翌月 '+i+'日</option>';return '<div class="mz-box"><h3>'+e(o.n)+' 様</h3><div class="mz-grid"><div class="field"><label for="st-rd-'+e(o.id)+'">送金予定日（翌月の何日）</label><select id="st-rd-'+e(o.id)+'" data-set="remitDay.'+e(o.id)+'">'+opts+'</select></div>'+'<div class="field"><label for="st-ff-'+e(o.id)+'">手数料なしの期間（〜この月まで）</label><input type="month" id="st-ff-'+e(o.id)+'" data-set="feeFree.'+e(o.id)+'" value="'+e(ff)+'" aria-describedby="st-ff-cap"></div></div></div>'}).join('')+'</div><p class="cap" id="st-ff-cap">手数料なしの期間は、空のままなら「なし」です。期間中の管理手数料は ¥0 になり、明細に「サービス期間」と出ます。送金予定日が月末より後（31日など）のときは、その月の末日です。</p></div>';
+ var it=d.itaku;
+ h+='<div class="mz-sec"><h3>総合振込（委託者・振込元の口座）</h3><p class="cap">銀行と契約したときに決まる番号です（見本の値は架空です）。カナは半角で入れます。</p><div class="mz-grid">'+
+  [['code','委託者コード（10けた）'],['name','委託者名（半角カナ）'],['bank','振込元の銀行コード（4けた）'],['bankKana','銀行名（半角カナ）'],['branch','支店コード（3けた）'],['branchKana','支店名（半角カナ）'],['acct','口座番号（7けた）']].map(function(f){return '<div class="field"><label for="st-it-'+f[0]+'">'+f[1]+'</label><input type="text" id="st-it-'+f[0]+'" data-set="itaku.'+f[0]+'" value="'+e(it[f[0]])+'"'+(/code|bank$|branch$|acct/.test(f[0])?' inputmode="numeric"':'')+' autocomplete="off"></div>'}).join('')+
+  '<div class="field"><label for="st-it-type">預金種目</label><select id="st-it-type" data-set="itaku.type"><option value="1"'+(String(it.type)!=='2'?' selected':'')+'>普通</option><option value="2"'+(String(it.type)==='2'?' selected':'')+'>当座</option></select></div></div></div>';
+ h+='<p class="err" id="setErr" role="alert"></p><div class="mz-sticky"><button type="button" class="btn primary" data-act="setsave">設定を保存</button><button type="button" class="btn" data-act="setcancel"'+(setDirty()?'':' disabled')+'>変更をやめる</button></div>';
+ return h;
+}
+function propBox(p,d){
+ var o=GK.owner(p.owner),v=X.treat(p.id,d),set=!!d.treat[p.id],id=e(p.id),h='<div class="mz-box"><h3>'+e(p.n)+' <span class="cap">'+id+(o?' · '+e(o.n):'')+'</span></h3><div class="mz-grid">';
+ h+='<div class="field"><label for="st-tr-'+id+'">会計の扱い</label><select id="st-tr-'+id+'" data-set="treat.'+id+'">'+X.TREATS.map(function(t){return '<option value="'+t[0]+'"'+(t[0]===v?' selected':'')+'>'+t[1]+'</option>'}).join('')+'</select>'+(set?'':'<span class="cap">未設定（管理受託として扱います）</span>')+'</div>';
+ if(v==='受託'){var f=X.feeOf(p.id,d);
+  h+='<div class="field"><label for="st-fm-'+id+'">管理手数料の決め方</label><select id="st-fm-'+id+'" data-set="fee.'+id+'.method"><option value="room"'+(f.method==='room'?' selected':'')+'>定額・入居中の部屋ごと</option><option value="pct"'+(f.method==='pct'?' selected':'')+'>家賃の％</option></select></div>';
+  h+=f.method==='room'?'<div class="field"><label for="st-fa-'+id+'">1室あたり（円・毎月）</label><input type="text" inputmode="numeric" id="st-fa-'+id+'" data-set="fee.'+id+'.amount" value="'+e(String(f.amount))+'"></div>':'<div class="field"><label for="st-fq-'+id+'">家賃・共益費の何％</label><input type="text" inputmode="decimal" id="st-fq-'+id+'" data-set="fee.'+id+'.pct" value="'+e(String(f.pct))+'"></div>';
+  h+='<div class="field"><label for="st-ft-'+id+'">消費税</label><select id="st-ft-'+id+'" data-set="fee.'+id+'.tax"><option value="ex"'+(f.tax==='ex'?' selected':'')+'>税抜（別に消費税10%）</option><option value="in"'+(f.tax==='in'?' selected':'')+'>税込</option></select></div>';
+  var rn=X.renewOf(p.id,d);h+='<div class="field"><label for="st-rn-'+id+'">更新料・礼金</label><select id="st-rn-'+id+'" data-set="renew.'+id+'"><option value="owner"'+(rn==='owner'?' selected':'')+'>オーナーに送金する</option><option value="company"'+(rn==='company'?' selected':'')+'>会社の収入にする</option></select></div>';
+  h+='</div><p class="cap">'+(f.method==='room'?'入居中の部屋 = その月に契約があった部屋（'+e(X.mon(S.m))+'は '+X.occupied(p.id,S.m)+'室）。':'')+'東京都の物件の標準は1室 ¥1,500、ほかは ¥3,500 です。</p>';
+ }else if(v==='サブリース'){var sl=X.subleaseOf(p.id,d);
+  h+='<div class="field"><label for="st-sa-'+id+'">借上賃料（円・毎月）</label><input type="text" inputmode="numeric" id="st-sa-'+id+'" data-set="sublease.'+id+'.amount" value="'+e(String(sl.amount||''))+'"></div>';
+  h+='<div class="field"><label for="st-so-'+id+'">払う相手（オーナー）</label><select id="st-so-'+id+'" data-set="sublease.'+id+'.owner">'+GK.db.owners.map(function(x){return '<option value="'+e(x.id)+'"'+(x.id===sl.owner?' selected':'')+'>'+e(x.n)+'</option>'}).join('')+'</select></div></div><p class="cap">借上賃料はオーナー送金の画面に「借上賃料」として出て、総合振込データにも入ります（管理手数料は引きません）。</p>';
+ }else h+='</div><p class="cap">自社所有なので、オーナーへの送金はありません。</p>';
+ return h+'</div>';
+}
+function setPath(d,path,v){
+ var p=path.split('.');
+ if(p[0]==='fee'){var f=d.fee[p[1]]=d.fee[p[1]]||{};var df=X.feeOf(p[1],d);['method','amount','pct','tax'].forEach(function(k){if(f[k]==null)f[k]=df[k]});f[p[2]]=p[2]==='method'||p[2]==='tax'?v:v;return}
+ if(p[0]==='feeFree'){if(v)d.feeFree[p[1]]=String(v).slice(0,7);else delete d.feeFree[p[1]];return}
+ if(p[0]==='renew'){d.renew[p[1]]=v;return}
+ if(p[0]==='sublease'){var sl=d.sublease[p[1]]=d.sublease[p[1]]||{};var ds=X.subleaseOf(p[1],d);if(sl.amount==null)sl.amount=ds.amount;if(sl.owner==null)sl.owner=ds.owner;sl[p[2]]=v;return}
+ if(p[0]==='map'){d.map[p[1]][p[2]][+p[3]]=v;return}
+ if(p[0]==='treat'){d.treat[p.slice(1).join('.')]=v;return}
+ if(p[0]==='remitDay'){d.remitDay[p[1]]=+v;return}
+ if(p[0]==='itaku'){d.itaku[p[1]]=v;return}
+ if(p[0]==='remitFee'){d.remitFee=v;return}
+ d[p[0]]=v;
+}
+function setSave(){
+ var d=X.clone(setDraft()),er=$('#setErr'),bad=function(msg,sel){if(er)er.textContent=msg;var f=sel&&document.querySelector(sel);if(f){f.setAttribute('aria-invalid','true');f.focus()}};
+ document.querySelectorAll('[data-set][aria-invalid]').forEach(function(x){x.removeAttribute('aria-invalid')});
+ var fee=digits(d.remitFee);d.remitFee=fee===''?0:+fee;
+ if(!String(d.bankAcct||'').trim())return bad('口座の勘定科目を入れてください。','#st-ba');
+ for(var fp in d.fee){var fe=d.fee[fp],pn=(GK.prop(fp)||{}).n||fp;
+  if(fe.amount!=null){var fa=nfk(fe.amount).replace(/[,円\s]/g,'');if(!/^\d+$/.test(fa))return bad(pn+'の管理手数料（1室あたり）は0以上の整数で入れてください。','#st-fa-'+fp);fe.amount=+fa}
+  if(fe.pct!=null){var fq=nfk(fe.pct).replace(/[%\s]/g,'');if(!/^\d+(\.\d+)?$/.test(fq)||+fq>100)return bad(pn+'の管理手数料（％）は0〜100で入れてください。','#st-fq-'+fp);fe.pct=+fq}}
+ for(var sp in d.sublease){var se=d.sublease[sp],sn=(GK.prop(sp)||{}).n||sp,sa=nfk(se.amount==null?'':se.amount).replace(/[,円\s]/g,'');if(sa===''){se.amount=0}else if(!/^\d+$/.test(sa))return bad(sn+'の借上賃料は0以上の整数で入れてください。','#st-sa-'+sp);else se.amount=+sa}
+ for(var t in d.map)for(var u in d.map[t])if(!String(d.map[t][u][0]||'').trim()){S.setT=t;keep(render);return bad(X.treatLabel(t)+'の「'+u+'」の勘定科目を入れてください。','[data-set="map.'+t+'.'+u+'.0"]')}
+ var it=d.itaku;
+ if(it.code&&!/^\d{10}$/.test(String(it.code).trim()))return bad('委託者コードは10けたの数字にしてください。','#st-it-code');
+ if(it.name&&!X.hankaku(it.name))return bad('委託者名に銀行で使えない文字があります。半角カナで入れてください。','#st-it-name');
+ if(it.bank&&!/^\d{4}$/.test(String(it.bank).trim()))return bad('銀行コードは4けたの数字です。','#st-it-bank');
+ if(it.branch&&!/^\d{3}$/.test(String(it.branch).trim()))return bad('支店コードは3けたの数字です。','#st-it-branch');
+ if(it.acct&&!/^\d{1,7}$/.test(String(it.acct).trim()))return bad('口座番号は7けたまでの数字です。','#st-it-acct');
+ Object.keys(it).forEach(function(k){it[k]=String(it[k]==null?'':it[k]).trim()});
+ if(it.name)it.name=X.hankaku(it.name);if(it.bankKana)it.bankKana=X.hankaku(it.bankKana);if(it.branchKana)it.branchKana=X.hankaku(it.branchKana);
+ var r=X.saveSettings(d);S.set=null;render();
+ GK.toast('設定を保存しました',function(){r.undo();S.set=null;render();GK.toast('設定を元に戻しました')});
+}
+
+/* ---------- render ---------- */
+function panelHtml(){
+ if(S.tab==='import')return panelImport();
+ if(S.tab==='mf')return panelMf();
+ if(S.tab==='remit')return panelRemit();
+ if(S.tab==='close')return panelClose();
+ if(S.tab==='settings')return panelSettings();
+ return panelCheck();
+}
+function sideBadge(){
+ var a=document.querySelector('#side a[href="money.html"]');if(!a)return;
+ var n=X.badge(),b=a.querySelector('.badge');
+ if(!n){if(b)b.remove();return}
+ if(!b){b=document.createElement('span');b.className='badge';a.appendChild(b)}
+ b.textContent=String(n);b.setAttribute('aria-label','未確認 '+n+'件（要確認と確認待ち）');
+}
+function render(){
+ X.ensure();
+ TABS=ALL_TABS.filter(function(t){return tabOk(t[0])});if(!tabOk(S.tab))S.tab='check';
+ renderHead();renderStats();renderTabs();
+ $('#mzNotes').innerHTML=gateHtml($('#mzNotes').innerHTML);$('#mzStats').innerHTML=gateHtml($('#mzStats').innerHTML);
+ $('#mzPanel').innerHTML=gateHtml(panelHtml());
+ bindDrop();sideBadge();
+}
+function keep(fn){
+ var a=document.activeElement,id=a&&a.id,sel=null;try{if(a&&typeof a.selectionStart==='number')sel=[a.selectionStart,a.selectionEnd]}catch(x){}
+ fn();
+ if(id){var n=document.getElementById(id);if(n&&n!==a&&n.focus){try{n.focus();if(sel&&n.setSelectionRange)n.setSelectionRange(sel[0],sel[1])}catch(x){}}}
+}
+function bindDrop(){
+ var d=$('#mzDrop');if(!d||d._bound)return;d._bound=true;
+ ['dragenter','dragover'].forEach(function(t){d.addEventListener(t,function(ev){ev.preventDefault();d.classList.add('is-over')})});
+ ['dragleave','drop'].forEach(function(t){d.addEventListener(t,function(ev){ev.preventDefault();d.classList.remove('is-over')})});
+ d.addEventListener('drop',function(ev){readFiles(ev.dataTransfer&&ev.dataTransfer.files)});
+}
+function go(v){
+ var p=String(v).split(':');if(!tabOk(p[0]))return;
+ if(p[0]==='check'&&p[1]){S.f=p[1];S.prop=''}
+ if(p[0]==='mf')S.mfAll=false;
+ setTab(p[0]);var pn=$('#mzPanel');if(pn)pn.focus();
+}
+function act(name,id,btn){
+ if(!actOk(name))return;
+ var m=S.m,row=id?GK.by(M().bank,id):null;
+ if(name==='confirm'){
+  var r=X.confirm(m,id);
+  if(!r.ok&&r.need==='over'&&X.roomsOf((M().links[id]||{}).allocs).length>1){openEdit(id,'いくつかの部屋の入金です。多い分 '+yen(r.rest)+' を、どの部屋の前受けにするか選んでください。');return}
+  if(!r.ok&&r.need==='over'){S.over=id;render();var b=document.querySelector('[data-act="adv"][data-id="'+id+'"]');if(b)b.focus();return}
+  if(!r.ok){GK.toast(r.msg);return}
+  S.over=null;render();focusRow(id);
+  GK.toast('確認しました（'+rowLabel(row)+'）',function(){r.undo();render();focusRow(id);GK.toast('確認を取り消しました')});return;
+ }
+ if(name==='adv'){var r2=X.confirmAdvance(m,id);if(!r2.ok&&r2.pick){openEdit(id,r2.msg);return}if(!r2.ok){GK.toast(r2.msg);return}S.over=null;render();focusRow(id);GK.toast('確認しました（多い分は前受け）',function(){r2.undo();render();GK.toast('確認を取り消しました')});return}
+ if(name==='overno'){var oid=S.over;S.over=null;render();focusRow(oid);return}
+ if(name==='bulk'){var r3=X.confirmHigh(m);if(!r3.ok){GK.toast(r3.msg);return}render();var pb=$('#mzPanel');if(pb)pb.focus();
+  GK.toast(r3.count+'件を確認しました'+(r3.failed.length?'（'+r3.failed.length+'件は確認できませんでした）':''),function(){r3.undo();render();GK.toast('まとめて確認した分を取り消しました')});return}
+ if(name==='edit'){S.over=null;openEdit(id);return}
+ if(name==='aiask'){
+  if(!row)return;var list=null,err='';
+  try{list=X.aiCandidates(m,row)}catch(x){err='AIにつながりませんでした。「直す」から手で部屋と用途を選べます。'}
+  S.ai={id:id,list:list||[],err:err};S.over=null;S.skip=null;render();
+  var f1=document.querySelector('[data-act="aipick"][data-id="'+id+'"]')||document.getElementById('ai-'+id+'-none');if(f1)f1.focus();
+  say(err||(list.length?'AIの候補 '+list.length+'件':'候補が見つかりませんでした'));return;
+ }
+ if(name==='aipick'){
+  var c=S.ai&&S.ai.id===id&&S.ai.list[+btn.getAttribute('data-i')];if(!c)return;
+  openEdit(id,'AIの提案（'+GK.ai.CONF[c.conf]+'）を入れました。部屋・用途・金額を確かめてから「この内容で確認する」を押してください。',c.allocs);return;
+ }
+ if(name==='aino'){S.ai=null;render();var ab=document.querySelector('[data-act="aiask"][data-id="'+id+'"]');if(ab)ab.focus();else focusRow(id);return}
+ if(name==='skip'){S.skip=id;S.over=null;render();var f=document.querySelector('[data-skr="'+id+'"]');if(f)f.focus();return}
+ if(name==='skipno'){var sid=S.skip;S.skip=null;render();focusRow(sid);return}
+ if(name==='reset'){var r4=X.reset(m,id);if(!r4.ok){GK.toast(r4.msg);return}render();focusRow(id);GK.toast('確認を取り消しました（自動の紐付けに戻しました）',function(){r4.undo();render();GK.toast('元に戻しました')});return}
+ if(name==='edclose'){closeEdit();return}
+ if(name==='edadd'){var E=S.edit,rw=GK.by(X.month(E.m).bank,E.id),d=Math.abs(rw.amount)-edSum();E.lines.push({use:rw.amount>=0?'家賃':'その他',tgt:'',month:E.m,amount:d>0?String(d):'',q:'',repair:'',charge:''});E.err='';renderEdit();var nf=document.getElementById('ed-u-'+(E.lines.length-1));if(nf)nf.focus();return}
+ if(name==='edadv'){var E2=S.edit,rw2=GK.by(X.month(E2.m).bank,E2.id),d2=Math.abs(rw2.amount)-edSum(),fu=(E2.lines.filter(function(l){return l.tgt.indexOf('u:')===0})[0]||{}).tgt;if(d2>0&&fu){E2.lines.push({use:'家賃',tgt:fu,month:X.addMonth(E2.m,1),amount:String(d2),q:'',repair:'',charge:''});E2.err='';renderEdit();var sv=$('#edSave');if(sv)sv.focus()}return}
+ if(name==='edsave'){edSave();return}
+ if(name==='fix'||name==='unfix'||name==='sent'||name==='unsent'){
+  var o=btn.getAttribute('data-o'),fn={fix:X.remitFix,unfix:X.remitUnfix,sent:X.remitSent,unsent:X.remitUnsent}[name],r5=fn(m,o);
+  if(!r5.ok){GK.toast(r5.msg);return}
+  var on=(GK.owner(String(o).replace(/^L:/,''))||{}).n||'';render();var hb=document.getElementById('ow-'+kid(o));if(hb){hb.setAttribute('tabindex','-1');hb.focus()}
+  GK.toast({fix:on+' 様の明細を確定しました',unfix:'確定を取り消しました',sent:on+' 様を送金済みにしました',unsent:'送金済みを取り消しました'}[name],function(){r5.undo();render();GK.toast('元に戻しました')});return;
+ }
+ if(name==='copytxt'){var ta=document.getElementById('txt-'+kid(btn.getAttribute('data-o')));if(ta){var dl=ta.closest&&ta.closest('details');if(dl)dl.open=true;copy(ta.value,btn,ta)}return}
+ if(name==='copyzg'){var z=X.zengin(m),zi=+btn.getAttribute('data-i')||0,F=z.files[zi];if(F)copy(F.text,btn,document.getElementById('zg-'+zi));return}
+ if(name==='close'){var r6=X.close(m);if(!r6.ok){GK.toast(r6.msg);return}render();var pc=$('#mzPanel');if(pc)pc.focus();GK.toast(X.mon(m)+'を締めました',function(){r6.undo();render();GK.toast('締めを取り消しました')});return}
+ if(name==='reopen'){S.reopen=true;render();var ro=$('#ro-t');if(ro)ro.focus();return}
+ if(name==='reopenno'){S.reopen=false;S.reopenText='';render();var rb=document.querySelector('[data-act="reopen"]');if(rb)rb.focus();return}
+ if(name==='banksub'){var bv=btn.getAttribute('data-v')||'',sd=X.clone(X.settings()),old=sd.bankName;sd.bankName=bv;var rb=X.saveSettings(sd);S.set=null;render();GK.toast('口座名を『'+bv+'』にしました（前は『'+old+'』）',function(){rb.undo();S.set=null;render();GK.toast('口座名を元に戻しました')});return}
+ if(name==='demomf'){var dm=X.importText(m,X.demoMfCsv(m),'デモ用（MFで直したあと）.csv');S.imp={m:m,ok:dm.ok,dup:!!dm.dup,kind:dm.kind,msgs:[dm.msg]};render();if(dm.ok)GK.toast('デモ用のMFの仕訳を取り込みました',function(){dm.undo();S.imp=null;render();GK.toast('取り込む前に戻しました')});return}
+ if(name==='dunup'||name==='dundown'){if(!GK.dun||!GK.can('money.dunning'))return;var od=dunDraft().order,oi=od.indexOf(+id),oj=oi+(name==='dunup'?-1:1);if(oi<0||oj<0||oj>2)return;od.splice(oj,0,od.splice(oi,1)[0]);keep(render);var mb=document.querySelector('[data-act="'+name+'"][data-id="'+id+'"]:not([disabled])')||document.querySelector('[data-act="dunup"][data-id="'+id+'"]');if(mb)mb.focus();return}
+ if(name==='dunsave'){if(GK.dun&&GK.can('money.dunning'))dunSave();return}
+ if(name==='duncancel'){S.dun=null;keep(render);GK.toast('滞納の設定の変更をやめました');return}
+ if(name==='setsave'){setSave();return}
+ if(name==='setcancel'){S.set=null;render();GK.toast('変更をやめました');return}
+ if(name==='mapdef'){var dd=setDraft();dd.map[S.setT]=X.defMap()[S.setT];keep(render);GK.toast(X.treatLabel(S.setT)+'を標準の科目にしました（まだ保存していません）');return}
+}
+function focusRow(id){var tr=id&&document.getElementById('row-'+id);if(!tr)return;var b=tr.querySelector('button,a');if(b)b.focus()}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(ev){
+ var t=ev.target.closest('button,[data-act]');if(!t||t.disabled)return;
+ if(t.closest('#side,#topbar,#toast,.gkc-wrap'))return;
+ if(t.getAttribute('aria-disabled')==='true'){
+  if(t.id==='edSave'){var E=S.edit,rw=E&&GK.by(X.month(E.m).bank,E.id);if(rw){var dd=Math.abs(rw.amount)-edSum(),er=$('#edErr');if(er)er.textContent=dd>0?'あと '+yen(dd)+' を割り当ててください。':yen(-dd)+' 多すぎます。'}}
+  else if(t.getAttribute('data-act')==='fix')GK.toast('先に、この方の部屋の確認待ちの入出金を確認してください');
+  return;
+ }
+ var d=t.dataset;
+ if(d.tab){if(tabOk(d.tab))setTab(d.tab,true);return}
+ if(d.go){go(d.go);return}
+ if(d.f){S.f=d.f;render();var fb=document.querySelector('[data-f="'+d.f+'"]');if(fb)fb.focus();return}
+ if(d.mfall!==undefined){S.mfAll=d.mfall==='1';render();var mb=document.querySelector('[data-mfall="'+d.mfall+'"]');if(mb)mb.focus();return}
+ if(d.sett){S.setT=d.sett;keep(render);var sb=document.querySelector('[data-sett="'+d.sett+'"]');if(sb)sb.focus();return}
+ if(d.edrm!==undefined&&S.edit){S.edit.lines.splice(+d.edrm,1);S.edit.err='';renderEdit();var f0=document.getElementById('ed-u-0');if(f0)f0.focus();return}
+ if(d.edcand!==undefined&&S.edit){var c=($('#panel')._cands||[])[+d.edcand];if(c){S.edit.lines=c.allocs.map(lineFromAlloc);var rw2=GK.by(X.month(S.edit.m).bank,S.edit.id),sm=edSum();if(rw2&&sm<Math.abs(rw2.amount))S.edit.lines.push({use:'家賃',tgt:S.edit.lines[0].tgt,month:X.addMonth(S.edit.m,1),amount:String(Math.abs(rw2.amount)-sm),q:'',repair:'',charge:''});S.edit.err='';renderEdit();var sv=$('#edSave');if(sv)sv.focus();say('候補を入れました')}return}
+ if(t.id==='mzPick'){var fi=$('#mzFile');if(fi){fi.value='';fi.click()}return}
+ if(d.act)act(d.act,d.id||'',t);
+});
+document.addEventListener('change',function(ev){
+ var t=ev.target;
+ if(t.id==='mzMonth'){S.m=t.value;S.edit=null;S.skip=null;S.ai=null;S.over=null;S.reopen=false;S.imp=null;renderEdit();try{history.replaceState(null,'','#tab-'+S.tab+(S.m!==X.cur()?'-'+S.m:''))}catch(x){}render();$('#mzMonth').focus();say(mon()+'を表示しています');return}
+ if(t.id==='mzFile'){readFiles(t.files);return}
+ if(t.id==='mzProp'){S.prop=t.value;render();$('#mzProp').focus();return}
+ if(t.dataset.skr){var sd=S.skipD[t.dataset.skr]=S.skipD[t.dataset.skr]||{r:'',t:''};sd.r=t.value;return}
+ if(t.dataset.dunset&&S.dun){dunPut(t);if(t.tagName==='SELECT')keep(render);return}
+ if(t.dataset.setfee!==undefined){var dr=setDraft();dr.remitFee=t.dataset.setfee==='1'?(dr.remitFee>0?dr.remitFee:165):0;keep(render);return}
+ if(t.dataset.set){setPath(setDraft(),t.dataset.set,t.value);if(t.tagName==='SELECT')keep(render);return}
+ if(t.dataset.ed&&S.edit){var i=+t.dataset.i,l=S.edit.lines[i];if(!l)return;var k=t.dataset.ed;
+  if(k==='use'){l.use=t.value;if(!X.RENT_USES[l.use])l.month=S.edit.m;if(l.use!=='修繕費')l.repair='';l.charge='';S.edit.err='';keep(renderEdit);return}
+  if(k==='tgt'){l.tgt=t.value;l.charge='';l.repair='';l.prop='';return}
+  if(k==='month'){l.month=t.value;l.charge='';return}
+ }
+});
+document.addEventListener('input',function(ev){
+ var t=ev.target;
+ if(t.dataset.skt){var sd=S.skipD[t.dataset.skt]=S.skipD[t.dataset.skt]||{r:'',t:''};sd.t=t.value;return}
+ if(t.id==='ro-t'){S.reopenText=t.value;return}
+ if(t.dataset.dunset&&S.dun&&t.tagName==='INPUT'){dunPut(t);var cb2=document.querySelector('[data-act="duncancel"]');if(cb2)cb2.disabled=!dunDirty();if(t.getAttribute('aria-invalid')){t.removeAttribute('aria-invalid');var de=$('#dunErr');if(de)de.textContent=''}return}
+ if(t.dataset.set&&t.tagName==='INPUT'){setPath(setDraft(),t.dataset.set,t.value);var dirtyEl=document.querySelector('.mz-dirty');if(!dirtyEl&&setDirty()){var hd=document.querySelector('#mzPanel .card-head');if(hd)hd.insertAdjacentHTML('beforeend','<span class="mz-dirty" role="status">保存していない変更があります</span>');var cb=document.querySelector('[data-act="setcancel"]');if(cb)cb.disabled=false}return}
+ if(t.dataset.ed&&S.edit){var i=+t.dataset.i,l=S.edit.lines[i];if(!l)return;
+  if(t.dataset.ed==='amount'){l.amount=t.value;updRest();var er=$('#edErr');if(er&&S.edit.err){S.edit.err='';er.textContent=''}return}
+  if(t.dataset.ed==='q'){l.q=t.value;if(ev.isComposing)return;var sel=document.getElementById('ed-t-'+i);if(sel)sel.innerHTML=optsHtml(i);return}
+ }
+});
+document.addEventListener('compositionend',function(ev){var t=ev.target;if(t.dataset&&t.dataset.ed==='q'&&S.edit){var i=+t.dataset.i,l=S.edit.lines[i];if(!l)return;l.q=t.value;var sel=document.getElementById('ed-t-'+i);if(sel)sel.innerHTML=optsHtml(i)}});
+document.addEventListener('submit',function(ev){
+ ev.preventDefault();var f=ev.target;
+ if(f.dataset&&f.dataset.skipform){
+  if(!GK.can('money.check'))return;
+  var id=f.dataset.skipform,d=S.skipD[id]||{r:'',t:''},reason=(d.r&&d.r.indexOf('その他')<0?d.r:'')+(d.t.trim()?(d.r&&d.r.indexOf('その他')<0?'・':'')+d.t.trim():'');
+  if(d.r.indexOf('その他')===0&&!d.t.trim()){var er=$('#sk-err');if(er)er.textContent='「その他」のときは、理由をひとこと書いてください。';var ti=$('#sk-t');if(ti){ti.setAttribute('aria-invalid','true');ti.setAttribute('aria-describedby','sk-err');ti.focus()}return}
+  var r=X.skip(S.m,id,reason);
+  if(!r.ok){var er2=$('#sk-err');if(er2)er2.textContent=r.msg;var r0=document.querySelector('[data-skr="'+id+'"]');if(r0)r0.focus();return}
+  S.skip=null;delete S.skipD[id];render();focusRow(id);
+  GK.toast('紐付けないにしました（'+reason+'）',function(){r.undo();render();focusRow(id);GK.toast('元に戻しました')});return;
+ }
+ if(f.id==='reopenForm'){
+  if(!GK.can('money.unclose'))return;
+  var txt=($('#ro-t')||{}).value||'',r2=X.reopen(S.m,txt);
+  if(!r2.ok){var e2=$('#ro-err');if(e2)e2.textContent=r2.msg;var ta=$('#ro-t');if(ta){ta.setAttribute('aria-invalid','true');ta.setAttribute('aria-describedby','ro-err');ta.focus()}return}
+  S.reopen=false;S.reopenText='';render();var pc=$('#mzPanel');if(pc)pc.focus();
+  GK.toast(X.mon(S.m)+'の締めを解除しました（理由を記録しました）',function(){var u=r2.undo();render();GK.toast(u&&u.ok===false?u.msg:'締めた状態に戻しました')});
+ }
+});
+document.addEventListener('keydown',function(ev){
+ var t=ev.target;
+ if(t&&t.getAttribute&&t.getAttribute('role')==='tab'){
+  var i=TABS.map(function(x){return x[0]}).indexOf(t.dataset.tab),n=TABS.length,j=-1;
+  if(ev.key==='ArrowRight')j=(i+1)%n;else if(ev.key==='ArrowLeft')j=(i-1+n)%n;else if(ev.key==='Home')j=0;else if(ev.key==='End')j=n-1;
+  if(j>=0){ev.preventDefault();setTab(TABS[j][0],true)}return;
+ }
+ if(ev.key==='Escape'){
+  if(typeof GK.callIsOpen==='function'&&GK.callIsOpen())return;
+  if(S.edit){ev.preventDefault();closeEdit();return}
+  if(S.over){var oid=S.over;S.over=null;render();focusRow(oid);return}
+  if(S.skip){var sid=S.skip;S.skip=null;render();focusRow(sid);return}
+  if(S.ai){var aid=S.ai.id;S.ai=null;render();var ab=document.querySelector('[data-act="aiask"][data-id="'+aid+'"]');if(ab)ab.focus();else focusRow(aid);return}
+ }
+ /* keep Tab inside the editor (modal) */
+ if(ev.key==='Tab'&&S.edit){
+  var p=document.querySelector('#panel .panel');if(!p)return;
+  var fs=[].slice.call(p.querySelectorAll('button,input,select,textarea,a[href]')).filter(function(x){return !x.disabled&&x.offsetParent!==null});if(!fs.length)return;
+  var k=fs.indexOf(document.activeElement);
+  if(ev.shiftKey&&k<=0){ev.preventDefault();fs[fs.length-1].focus()}else if(!ev.shiftKey&&(k<0||k===fs.length-1)){ev.preventDefault();fs[0].focus()}
+ }
+});
+/* a file dropped next to the drop area must not replace the page */
+['dragover','drop'].forEach(function(t){document.addEventListener(t,function(ev){if(!(ev.target&&ev.target.closest&&ev.target.closest('#mzDrop')))ev.preventDefault()})});
+window.addEventListener('hashchange',function(){readHash();S.edit=null;renderEdit();render()});
+
+/* ---- another tab saved (ganki-data.js reloads GK.db, then calls this): re-render, keep an open edit ---- */
+var composing=false,pending=false;
+document.addEventListener('compositionstart',function(){composing=true});
+document.addEventListener('compositionend',function(){composing=false;if(pending){pending=false;setTimeout(refresh,0)}});
+function refresh(){
+ X.ensure();
+ /* 機能の設定: an open form whose feature was turned OFF here is closed with a short note */
+ if(S.edit&&!GK.can('money.check')){S.edit=null;renderEdit();GK.offToast('入出金の確認')}
+ if((S.skip||S.over)&&!GK.can('money.check')){S.skip=null;S.over=null}
+ if(S.reopen&&!GK.can('money.unclose')){S.reopen=false;S.reopenText='';GK.offToast('締めの解除')}
+ if(S.set&&!GK.can('money.settings')){S.set=null;if(S.tab==='settings')GK.offToast('入出金の設定')}
+ if(S.edit){var L=X.month(S.edit.m).links[S.edit.id];if(JSON.stringify(L||null)!==S.edit.base){S.edit.note='ほかの画面でこの入出金が変わりました（'+(L?X.stateLabel[L.state]:'削除')+'）。いま入れている内容で確認すると、こちらが残ります。';S.edit.base=JSON.stringify(L||null)}}
+ if(S.set){var cur=JSON.stringify(X.settings());if(cur!==S.set.base&&!setDirty())S.set=null}
+ if(S.dun&&(!dunDirty()||!GK.can('money.settings')))S.dun=null; /* 滞納の設定: follow another tab's save unless something is typed here */
+ keep(function(){render();if(S.edit)renderEdit()});
+}
+window.GKrefresh=function(){if(composing){pending=true;return}try{refresh()}catch(err){if(window.console)console.error(err)}};
+
+render();
+if(location.hash){var pn=$('#mzPanel');if(pn&&pn.scrollIntoView)try{pn.scrollIntoView({block:'start'})}catch(x){}}
+})();
+</script>
+</body></html>

@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>管理の引継ぎ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="ganki-base.css">
+<script src="ganki-local-data.js"></script>
+<script src="ganki-data.js"></script>
+<script src="ganki-docs.js"></script>
+<script src="ganki-jonojo.js"></script>
+<style>
+/* Wizard-only rules (same look as register.html / turnover.html). Shell, buttons, pills, toast, fields and colours come from ganki-base.css. */
+.head p{font-size:13px;color:var(--muted)}
+[hidden]{display:none!important}
+.restore{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:13px}
+.restore.info{background:var(--info-soft);color:var(--info)}
+#restore{display:flex;flex-direction:column;gap:8px}
+#restore:empty{display:none}
+
+/* step bar */
+.steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
+.steps li{flex:1 1 0;min-width:110px}
+.steps button{width:100%;display:flex;gap:8px;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;text-align:left;font-size:13px;color:var(--muted)}
+.steps .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--surface-2);flex-shrink:0}
+.steps button[aria-current="step"]{border-color:var(--primary);color:var(--fg);font-weight:500}
+.steps button[aria-current="step"] .n{background:var(--primary);color:var(--primary-fg)}
+.steps .is-done .n{background:var(--ok-soft);color:var(--ok)}
+.steps button:disabled{cursor:not-allowed}
+.step-now{display:none;font-size:13px;font-weight:500}
+
+.work{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:start}
+.card{padding:18px 20px;gap:16px}
+.card h2{font-size:17px}
+.card h3{font-size:13px;color:var(--muted);font-weight:500;letter-spacing:.04em}
+.lead{font-size:13px;color:var(--muted);margin-top:2px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec + .sec{border-top:1px solid var(--line);padding-top:14px}
+
+.mode{display:inline-flex;background:var(--surface-2);border-radius:8px;padding:3px;gap:3px;flex-wrap:wrap}
+.mode button{border:0;background:transparent;padding:6px 14px;border-radius:6px;font-size:13px;color:var(--muted)}
+.mode button[aria-pressed="true"]{background:var(--surface);color:var(--fg);font-weight:500;box-shadow:var(--shadow)}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.grid .wide{grid-column:1 / -1}
+.hint{font-size:12px;color:var(--muted)}
+.auto{font-size:11px;color:var(--primary);background:var(--primary-soft);border-radius:4px;padding:0 5px;margin-left:6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+
+.pick{display:flex;flex-direction:column;gap:6px}
+.pick label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.pick label:has(input:checked){border-color:var(--primary);background:var(--primary-soft)}
+.pick input{margin-top:4px;accent-color:var(--primary)}
+.pick .t{font-weight:500}
+.pick .s{font-size:12px;color:var(--muted)}
+.search{width:100%}
+.dup{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:13px}
+.why{padding:9px 12px;border-radius:8px;background:var(--info-soft);color:var(--fg);font-size:12.5px}
+
+/* step 2: documents */
+.docs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.doc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.doc.got{border-color:#a9d6bd}
+.doc-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.doc-t b{font-size:13.5px;font-weight:500}
+.doc-a{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.docnote{width:190px;min-width:0;border:1px solid var(--input);border-radius:7px;padding:6px 10px;background:var(--surface)}
+
+/* step 3: rooms */
+.rooms{display:flex;flex-direction:column;gap:8px}
+/* row 1: 部屋 | 名前 + フリガナ (stacked) | 電話 | 家賃; row 2 (.f-more): 契約の始まり | 終わり | 保証会社 | 保証会社名 | 削除 */
+.room{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,2fr) minmax(0,1.2fr) minmax(0,1fr);grid-template-areas:"no ten tel rent" "more more more more";gap:8px 10px;align-items:end;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.room .field label{font-size:11.5px}
+.room .f-no{grid-area:no}.room .f-ten{grid-area:ten}.room .f-tel{grid-area:tel}.room .f-rent{grid-area:rent}
+.room .f-ten .kana{font-size:12.5px;padding-block:4px}
+/* wraps instead of overflowing when the card is narrow */
+.room .f-more{grid-area:more;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:flex-end;min-width:0}
+.room .f-more .f-start,.room .f-more .f-end{flex:1 1 132px;max-width:170px}
+.room .f-more .f-gua{flex:0 1 116px}
+.room .f-more .f-gname{flex:1 1 150px}
+.room .f-del{margin-left:auto}
+.room .f-gname[hidden]{display:none}
+.lblrow{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.bulk{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.bulk input{width:76px;border:1px solid var(--input);border-radius:7px;padding:5px 8px;background:var(--surface)}
+.bulk input.wide{width:170px}
+.paste textarea{width:100%;min-height:96px;border:1px solid var(--input);border-radius:7px;padding:7px 10px;background:var(--surface);font-family:inherit;resize:vertical}
+.paste{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:8px;background:var(--surface-2)}
+
+/* step 4: letters */
+.letter textarea{min-height:320px;line-height:1.7}
+.drafted{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px}
+.foot .r{display:flex;gap:8px;flex-wrap:wrap}
+
+/* summary */
+.sum{position:sticky;top:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.sum h2{font-size:14px}
+.sum dl{margin:0;display:flex;flex-direction:column;gap:10px}
+.sum .blk{border-top:1px solid var(--line);padding-top:10px}
+.sum dt{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.sum dd{margin:2px 0 0;font-size:13px;overflow-wrap:anywhere}
+.sum .empty{padding:0;text-align:left;font-size:inherit;color:var(--muted)}
+.pill.new{background:var(--primary-soft);color:var(--primary)}
+
+.confirm{display:flex;flex-direction:column;gap:10px}
+.cbox{border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.cbox .h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cbox .h b{font-size:13.5px}
+.cbox .kv{grid-template-columns:7em minmax(0,1fr);gap:2px 10px}
+.cbox ul{margin:0;padding-left:1.2em;font-size:13px}
+.result{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.result .big{font-size:18px;font-weight:700;color:var(--ok)}
+.result ul{margin:0;padding-left:1.2em;font-size:13px}
+
+@media (max-width:1100px){.work{grid-template-columns:minmax(0,1fr)}.sum{position:static;order:-1}}
+@media (max-width:640px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .card{padding:14px}
+  .steps li{min-width:0}
+  .steps .lab{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .steps button{justify-content:center}
+  .step-now{display:block}
+  .doc{grid-template-columns:minmax(0,1fr)}
+  .docnote{flex:1 1 140px;width:auto}
+  .room{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"no rent" "ten ten" "tel tel" "more more"}
+  .room .f-more{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .room .f-more .f-start,.room .f-more .f-end{max-width:none}
+  .room .f-more .f-gname{grid-column:1 / -1}
+  .room .f-del{grid-column:1 / -1;justify-self:end}
+  .room .f-ten .kana{font-size:inherit;padding-block:7px}
+  .bulk input.wide{flex:1 1 140px;width:auto}
+  .cbox .kv{grid-template-columns:6em minmax(0,1fr)}
+  .sum dl{display:none}
+  .sum.open dl{display:flex}
+}
+/* touch: tap targets of at least 40px */
+@media (pointer:coarse){
+  .btn,.steps button,.mode button,.chips .act,.bulk .act,.room .act,.field input,.field select,.docnote,.bulk input{min-height:40px}
+  .room .f-ten .kana{padding-block:7px}
+}
+</style></head><body>
+<div class="topbar" id="topbar"></div>
+<div class="app">
+  <aside class="side" id="side" aria-label="メインメニュー"></aside>
+  <main class="main">
+    <header class="head">
+      <div><h1>管理の引継ぎ</h1><p>ほかの管理会社から管理を引き継ぐ物件を、1つの流れで登録します。途中で保存して、続きはホームから開けます。</p></div>
+      <button class="btn ghost" type="button" id="reset">最初からやり直す</button>
+    </header>
+    <p class="hint" id="toImport" hidden></p>
+    <div id="restore"></div>
+    <ol class="steps" id="steps" aria-label="引継ぎの手順"></ol>
+    <p class="step-now" id="stepNow"></p>
+    <div class="work">
+      <section class="card" id="card" aria-live="polite"></section>
+      <aside class="sum" id="sum" aria-label="引継ぎの内容"></aside>
+    </div>
+    <p class="hint">登録した内容は、物件・台帳や入居者のページにも出ます。</p>
+  </main>
+</div>
+<datalist id="gua-list"><option value="ガンキ保証"><option value="東日本保証"><option value="全国家賃保証"></datalist>
+<div id="toast"></div>
+
+<script>
+(function(){
+GK.shell('properties.html'); /* 管理の引継ぎ belongs to 物件・台帳 in the menu, like register.html */
+if(GK.pageGate('page.takeover'))return; /* 機能の設定: this screen is OFF for the current person */
+var $=function(s){return document.querySelector(s)};
+var esc=GK.esc,T=GK.TODAY;
+/* Excelから取り込む (2026-10-19): for buildings already managed, kept in an Excel / CSV ledger (import.html) */
+(function(){var ti=$('#toImport');if(ti&&GK.can('act.import')){ti.innerHTML='すでに管理している物件を、台帳のExcel・CSVからまとめて登録するときは <a href="import.html">Excelから取り込む</a> を使います（引継ぎの手順は通りません）。';ti.hidden=false}})();
+/* phone numbers: 090-1234-5678 form on save, in the 名簿 paste and on screen (ganki-data.js); trimmed only with an older ganki-data.js */
+function ft(s){var v=s==null?'':String(s);return typeof GK.formatTel==='function'?GK.formatTel(v):v.normalize('NFKC').trim()}
+
+var STEPS=['物件とオーナー','受け取る書類','部屋と入居者','入居者へのお知らせ','確認して登録'];
+/* [label (stored in the record), one-line explanation, short name for the to-do, only needed when a room has a 保証会社] */
+var DOCS=[
+  ['賃貸借契約書（全室分）','入居者と結んでいる契約の書類です。家賃や契約の終わりを確かめるのに使います。','賃貸借契約書',false],
+  ['重要事項説明書','契約のときに入居者へ説明した内容（設備・決まりごと）の書類です。','重要事項説明書',false],
+  ['入居者名簿','部屋ごとの入居者の名前と連絡先の一覧です。手順3で、そのまま貼り付けて使えます。','入居者名簿',false],
+  ['鍵（本数を確認）','各部屋と共用部（玄関・ゴミ置き場など）の鍵です。受け取った本数をメモに残してください。','鍵',false],
+  ['保証会社の契約書（保証会社に入っている部屋がある場合だけ）','保証会社（入居者が家賃を払えないときに立て替える会社）と入居者の契約の書類です。','保証会社の契約書',true],
+  ['敷金の預かり一覧','入居のときに預かったお金（敷金）の、部屋ごとの金額です。退去の精算に使います。','敷金の預かり一覧',false]
+];
+var COMPANY='GANKI 賃貸管理部',COMPANY_TEL='03-0000-0001';
+var BANK='架空銀行 本店 普通 0001234　口座名義：ガンキチンタイカンリ（架空の口座）';
+var FNM=GK.firstOfNextMonth(T),FNM2=GK.firstOfNextMonth(FNM),FNM3=GK.firstOfNextMonth(FNM2);
+var KEY='ganki-takeover-draft'; /* a new takeover before its first save (after that it lives in GK.db.takeovers) */
+
+/* ---- state ---- */
+function blankRoom(no){return {no:no||'',ten:'',k:'',tel:'',rent:'',start:'',end:'',gua:'不明',guaName:''}}
+function blank(){return {id:'',name:'',step:0,cur:0,start:FNM2,
+  owner:{mode:'pick',id:'',n:'',k:'',tel:''},prop:{addr:'',struct:'',year:''},prev:{n:'',tel:''},
+  docs:DOCS.map(function(d){return [d[0],0,'']}),rooms:[blankRoom()],
+  letters:{sendOn:'',drafted:false,text:{yes:'',no:''}},updated:'',done:false}}
+function core(s){return JSON.stringify([s.name,s.start,s.owner,s.prop,s.prev,s.docs,s.rooms,s.letters])}
+function hasInput(s){try{return core(s)!==core(blank())}catch(e){return false}}
+function str(v){return v==null?'':String(v)}
+/* a stored record (maybe from an older version) -> working state with every field present */
+function fromRec(r){
+  var s=blank();r=r||{};
+  ['id','name','start','updated','propId','doneAt'].forEach(function(k){if(r[k]!=null)s[k]=str(r[k])});
+  s.step=Math.max(0,Math.min(4,+r.step||0));s.cur=s.step;s.done=!!r.done;if(r.sample)s.sample=true;
+  ['owner','prop','prev'].forEach(function(k){if(r[k]&&typeof r[k]==='object')Object.keys(s[k]).forEach(function(f){if(r[k][f]!=null)s[k][f]=str(r[k][f])})});
+  if(s.owner.mode!=='new')s.owner.mode='pick';
+  if(Array.isArray(r.docs)&&r.docs.length)s.docs=r.docs.filter(Array.isArray).map(function(d){return [str(d[0]),d[1]?1:0,str(d[2])]});
+  if(Array.isArray(r.rooms)&&r.rooms.length)s.rooms=r.rooms.map(function(x){var b=blankRoom();x=x||{};Object.keys(b).forEach(function(f){if(x[f]!=null)b[f]=str(x[f])});if(['あり','なし','不明'].indexOf(b.gua)<0)b.gua='不明';return b});
+  if(r.letters){s.letters.sendOn=str(r.letters.sendOn);s.letters.drafted=!!r.letters.drafted;if(r.letters.text){s.letters.text.yes=str(r.letters.text.yes);s.letters.text.no=str(r.letters.text.no)}}
+  return s;
+}
+function blankRow(r){return !str(r.no).trim()&&!str(r.ten).trim()&&!str(r.k).trim()&&!str(r.tel).trim()&&!str(r.rent).trim()&&!r.start&&!r.end}
+function toRec(s){
+  var r={id:s.id,name:s.name.trim(),step:s.step,start:s.start,owner:s.owner,prop:s.prop,prev:s.prev,docs:s.docs,
+    rooms:s.rooms.filter(function(x){return !blankRow(x)}),letters:s.letters,updated:s.updated,done:!!s.done};
+  if(s.sample)r.sample=true;
+  if(s.propId){r.propId=s.propId;r.doneAt=s.doneAt||T}
+  return JSON.parse(JSON.stringify(r));
+}
+var S=blank(),errs={},note='';
+function nowStamp(){return T+'T'+new Date().toTimeString().slice(0,5)}
+function clearHash(){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+function setHash(id){try{history.replaceState(null,'','#to-'+id)}catch(e){}}
+/* read the latest store first (another page may have changed it), but only when the browser storage works */
+function fresh(){try{localStorage.getItem('x');GK.db=GK.load()}catch(e){}}
+/* write the working state into GK.db.takeovers (creates the record on the first save) */
+function persist(){
+  if(S.done)return;
+  fresh();var list=GK.takeovers();
+  if(!S.id){S.id='TO'+Date.now();GK.store.drop(KEY);setHash(S.id)}
+  S.updated=nowStamp();
+  var rec=toRec(S),i=-1;list.forEach(function(x,j){if(x.id===S.id)i=j});
+  if(i>=0)list[i]=rec;else list.push(rec);
+  GK.save();
+}
+/* while typing: a saved takeover is updated in place; a new one is kept as a browser draft until 「次へ」 */
+function keep(){if(S.done)return;if(S.id)persist();else if(hasInput(S))GK.store.set(KEY,S);else GK.store.drop(KEY)}
+
+/* ---- helpers ---- */
+function getP(p){var a=p.split('.'),o=S;for(var i=0;i<a.length;i++){if(o==null)return '';o=o[a[i]]}return o==null?'':o}
+function setP(p,v){var a=p.split('.'),o=S;for(var i=0;i<a.length-1;i++)o=o[a[i]];o[a[a.length-1]]=v}
+function jp(s){return GK.parse(s)?GK.jp(s):''}
+function md(s){var d=GK.parse(s);return d?(d.getMonth()+1)+'/'+d.getDate()+'（'+GK.wd(s)+'）':''}
+function mdShort(s){var d=GK.parse(s);return d?(d.getMonth()+1)+'/'+d.getDate():''}
+function yen(v){var n=GK.num(v);return n?GK.yen(n):''}
+function maxD(a,b){return a>b?a:b}
+function normNo(v){return str(v).normalize('NFKC').trim().replace(/号室?$/,'').trim()}
+function ownerObj(){return S.owner.mode==='pick'?GK.owner(S.owner.id):null}
+function ownerName(){var o=ownerObj();return S.owner.mode==='pick'?(o?o.n:''):S.owner.n.trim()}
+function docInfo(label){for(var i=0;i<DOCS.length;i++)if(DOCS[i][0]===label)return {ex:DOCS[i][1],short:DOCS[i][2],gua:DOCS[i][3]};return {ex:'',short:label,gua:false}}
+function rooms(){return S.rooms.filter(function(r){return normNo(r.no)}).map(function(r){return {no:normNo(r.no),ten:str(r.ten).trim(),k:str(r.k).trim(),tel:ft(r.tel),rent:r.rent,start:GK.parse(r.start)?r.start:'',end:GK.parse(r.end)?r.end:'',gua:r.gua,guaName:str(r.guaName).trim()}})}
+/* the contract term a room will be registered with: start unknown -> 管理開始日; end unknown -> start + 2 years,
+   renewed every 2 years until it is after both today and 管理開始日 (same rule as the sample data) */
+function term(r){
+  var start=r.start||S.start,end=r.end;
+  if(!end){end=GK.addYears(start,2);var n=0;while((end<T||end<=S.start)&&n++<60)end=GK.addYears(GK.addDays(end,1),2)}
+  return {start:start,end:end,startUnknown:!r.start,endUnknown:!r.end};
+}
+function termTask(r){var tm=term(r);return tm.startUnknown?'契約の始まり'+(tm.endUnknown?'と終わり':'')+'を契約書で確認（'+r.no+'）':tm.endUnknown?'契約の終わりを契約書で確認（'+r.no+'）':''}
+function counts(){return GK.takeoverRooms({rooms:S.rooms})}
+function sendOn(){return GK.takeoverSendOn(S)}
+function docDue(){return GK.parse(S.start)?maxD(T,GK.addDays(S.start,-7)):T}
+function askDue(){return maxD(T,GK.addDays(sendOn(),-7))}
+/* the 保証会社 contract is only needed when some room has (or may have) a 保証会社 */
+function guaDocNeeded(){var R=counts();return !(R.occupied>0&&R.yes===0&&R.unknown===0)}
+function similar(list,name,tel){
+  var nm=function(s){return GK.norm(s).replace(/株式会社|\(株\)|（株）/g,'')},n=nm(name),t=str(tel).replace(/\D/g,'');
+  if(!n&&!t)return null;
+  return list.filter(function(x){var xn=nm(x.n);return (n.length>=2&&(xn.indexOf(n)>=0||n.indexOf(xn)>=0))||(t.length>=10&&str(x.tel).replace(/\D/g,'')===t)})[0]||null;
+}
+function addTask(unit,t,due){
+  if(GK.addTask)return GK.addTask(unit,t,due);
+  var k={id:'k'+Date.now()+String(Math.floor(Math.random()*1000)),unit:unit,t:t,due:due,who:GK.ME,done:false};GK.db.tasks.push(k);return k;
+}
+function nextPid(){
+  var m=0;GK.db.props.forEach(function(p){var n=parseInt(str(p.id).replace(/^GK-/,''),10);if(n>m)m=n});
+  var id;do{m++;id='GK-'+String(m).padStart(4,'0')}while(GK.prop(id));return id;
+}
+/* the to-dos that 「引継ぎを登録」 adds (shown on step 5 before saving) */
+function planTasks(){
+  var R=rooms(),occ=R.filter(function(r){return r.ten}),first=R[0]?R[0].no:'',ts=[],needG=guaDocNeeded();
+  var from='前の管理会社'+(S.prev.n.trim()?'（'+S.prev.n.trim()+'）':'')+'から';
+  S.docs.forEach(function(d){if(d[1])return;var inf=docInfo(d[0]);if(inf.gua&&!needG)return;ts.push({no:first,t:from+inf.short+'を受け取る'+(d[2].trim()?'（'+d[2].trim()+'）':''),due:docDue()})});
+  occ.filter(function(r){return r.gua==='不明'}).forEach(function(r){ts.push({no:r.no,t:'前オーナーに保証会社の加入を確認（'+r.no+'）',due:askDue()})});
+  occ.forEach(function(r){var tt=termTask(r);if(tt)ts.push({no:r.no,t:tt,due:docDue()})});
+  var c=counts(),n=c.yes+c.no;
+  if(n)ts.push({no:(occ.filter(function(r){return r.gua!=='不明'})[0]||{}).no||first,t:'入居者へのお知らせを送る（'+n+'通）',due:sendOn()});
+  if(first)ts.push({no:first,t:'管理開始日（'+mdShort(S.start)+'）に引継ぎを完了',due:S.start});
+  return ts;
+}
+
+/* ---- validation per step (returns {key: message}) ---- */
+function check(i){
+  var e={};
+  if(i===0){
+    if(S.owner.mode==='pick'){if(!S.owner.id||!GK.owner(S.owner.id))e.ownerPick='オーナーを1人選んでください。いない場合は「新しいオーナー」を押してください。'}
+    else if(!S.owner.n.trim())e['owner.n']='オーナーの名前（法人名）を入れてください。';
+    if(!S.name.trim())e.name='物件名を入れてください。';
+    if(!S.prop.addr.trim())e['prop.addr']='所在地を入れてください。';
+    var y=str(S.prop.year).normalize('NFKC').trim();if(y&&!/^(19|20)\d{2}$/.test(y))e['prop.year']='築年は「2010」のように西暦4けたで入れてください。';
+    if(!GK.parse(S.start))e.start='管理開始日を入れてください。';
+  }
+  if(i===2){
+    var msgs=[],nos=[],any=false,st=GK.parse(S.start)?S.start:'';
+    var bad=function(j,f,m){e['r'+j+'.'+f]=1;if(msgs.indexOf(m)<0)msgs.push(m)};
+    S.rooms.forEach(function(r,j){
+      var no=normNo(r.no),ten=str(r.ten).trim();
+      if(!no){if(ten||str(r.rent).trim()||r.start||r.end||str(r.k).trim()||str(r.tel).trim())bad(j,'no',(j+1)+'行目の部屋番号を入れてください。');return}
+      any=true;
+      if(nos.indexOf(no)>=0)bad(j,'no',no+' が2回入っています。どちらかを直すか削除してください。');
+      nos.push(no);
+      if(!ten)return;
+      if(!GK.num(r.rent))bad(j,'rent',no+' の家賃を入れてください（入居者がいる部屋は必須です）。');
+      if(r.start&&!GK.parse(r.start))bad(j,'start',no+' の契約の始まりを確かめてください。');
+      if(r.end){if(!GK.parse(r.end))bad(j,'end',no+' の契約の終わりを確かめてください。');else if(st&&r.end<=st)bad(j,'end',no+' の契約の終わり（'+GK.jp(r.end)+'）が管理開始日より前です。日付を直すか空欄にしてください（空欄なら契約の始まりから2年ごとに更新した日にします）。')}
+      if(GK.parse(r.start)&&GK.parse(r.end)&&r.start>r.end){bad(j,'start',no+' の契約の始まり（'+GK.jp(r.start)+'）が終わり（'+GK.jp(r.end)+'）より後です。');e['r'+j+'.end']=1}
+      var td=str(r.tel).normalize('NFKC').replace(/\D/g,'');if(str(r.tel).trim()&&(td.length<10||td.length>11))bad(j,'tel',no+' の電話番号を確かめてください（例：090-0000-0000）。');
+      if(r.gua==='あり'&&!str(r.guaName).trim())bad(j,'guaName',no+' の保証会社の名前を入れてください。分からなければ「分からない」を選べます。');
+    });
+    if(!any)msgs.unshift('部屋を1つ以上入れてください（部屋番号だけでも登録できます）。');
+    if(msgs.length)e.rooms=msgs;
+  }
+  if(i===3){
+    var so=sendOn();
+    if(!GK.parse(so))e['letters.sendOn']='送る予定日を入れてください。';
+    else if(so<T)e['letters.sendOn']='送る予定日が今日より前です。今日以降の日にしてください。';
+    else if(S.start>=T&&so>S.start)e['letters.sendOn']='管理開始日（'+md(S.start)+'）までの日にしてください。入居者が新しい連絡先を前もって知るためです。';
+  }
+  return e;
+}
+function firstBad(){for(var i=0;i<4;i++)if(Object.keys(check(i)).length)return i;return -1}
+
+/* ---- rendering ---- */
+function fld(path,label,o){
+  o=o||{};var v=getP(path),id='f-'+path.replace(/\./g,'-'),er=errs[path];
+  var inv=er?' aria-invalid="true" aria-describedby="'+id+'-e"':'';
+  var inp='<input id="'+id+'" data-k="'+path+'" type="'+(o.type||'text')+'" value="'+esc(o.value!=null?o.value:v)+'"'+(o.ph?' placeholder="'+esc(o.ph)+'"':'')+(o.mode?' inputmode="'+o.mode+'"':'')+(o.min?' min="'+o.min+'"':'')+inv+(o.attrs||'')+' autocomplete="off">';
+  return '<div class="field'+(o.wide?' wide':'')+'"><label for="'+id+'">'+label+(o.req?'<span class="req">必須</span>':'')+(o.auto?'<span class="auto">'+o.auto+'</span>':'')+'</label>'+inp+(o.extra||'')+(o.hint?'<span class="hint">'+o.hint+'</span>':'')+(er?'<p class="err" id="'+id+'-e" role="alert">'+esc(er)+'</p>':'')+'</div>';
+}
+function chips(path,list){
+  var v=getP(path),seen={};
+  return '<div class="chips">'+list.filter(function(c){if(!c[1]||seen[c[1]])return false;seen[c[1]]=1;return true}).map(function(c){return '<button class="act" type="button" data-chip="'+path+'|'+c[1]+'" aria-pressed="'+(v===c[1])+'">'+c[0]+' '+md(c[1])+'</button>'}).join('')+'</div>';
+}
+function errBox(key,id){var m=errs[key];if(!m)return '';return '<p class="err" role="alert"'+(id?' id="'+id+'"':'')+'>'+(Array.isArray(m)?m.slice(0,5).map(esc).join('<br>')+(m.length>5?'<br>ほか '+(m.length-5)+'件':''):esc(m))+'</p>'}
+function dupOwner(){
+  if(S.owner.mode!=='new')return '';
+  var d=similar(GK.db.owners,S.owner.n,S.owner.tel);
+  return d?'<div class="dup" role="status"><span>似たオーナーが登録済みです：<b>'+esc(d.n)+'</b>（'+esc(ft(d.tel))+'）</span><button class="act" type="button" data-use="'+esc(d.id)+'">こちらを使う</button></div>':'';
+}
+function dupProp(){
+  var n=GK.norm(S.name);if(!n)return '';
+  var p=GK.db.props.filter(function(x){return GK.norm(x.n)===n})[0];
+  return p?'<div class="dup" role="status"><span>同じ名前の物件がもう登録されています：<b>'+esc(p.n)+'</b>（'+esc(p.addr)+'）。別の建物なら、このまま進めて大丈夫です。</span></div>':'';
+}
+
+function stepOne(){
+  var h='<div><h2>1. 物件とオーナー</h2><p class="lead">引き継ぐ建物と、その持ち主（オーナー）です。前の管理会社の連絡先も入れておくと、書類を受け取るときに使えます。</p></div>';
+  if(GK.can('doc.read'))h+='<div class="gkd-bar"><button class="btn" type="button" id="readDocProp">書類から読み込む</button><span class="hint">重要事項説明書から、物件名・所在地・建物の種類・築年を入れます。</span></div>';
+  h+='<div class="sec"><h3>オーナー</h3><div class="mode" role="group" aria-label="オーナーの登録のしかた"><button type="button" data-mode="pick" aria-pressed="'+(S.owner.mode==='pick')+'">登録済みから選ぶ</button><button type="button" data-mode="new" aria-pressed="'+(S.owner.mode==='new')+'">新しいオーナー</button></div>';
+  if(S.owner.mode==='pick'){
+    var q=S._oq||'';
+    h+='<input class="search" id="o-q" type="search" placeholder="名前・フリガナ・電話番号で探す" aria-label="オーナーを探す" value="'+esc(q)+'" autocomplete="off">';
+    var list=GK.db.owners.filter(function(o){return GK.hit(q,[o.n,o.k,o.tel])});
+    h+='<div class="pick" role="radiogroup" aria-label="オーナー">'+(list.length?list.map(function(o){
+      var ps=GK.db.props.filter(function(p){return p.owner===o.id}).map(function(p){return p.n});
+      return '<label><input type="radio" name="owner" id="op-'+esc(o.id)+'" value="'+esc(o.id)+'" data-pick="owner"'+(S.owner.id===o.id?' checked':'')+'><span><span class="t">'+GK.hl(o.n,q)+'</span><br><span class="s">'+esc(o.k)+' · '+esc(ft(o.tel))+' · 管理中：'+(ps.length?esc(ps.join('、')):'なし')+'</span></span></label>'}).join(''):'<p class="note">見つかりません。「新しいオーナー」から登録できます。</p>')+'</div>'+errBox('ownerPick');
+  }else{
+    h+='<div id="dup-owner">'+dupOwner()+'</div><div class="grid">'+fld('owner.n','名前（法人名）',{req:1,ph:'例：田村 浩二／株式会社〇〇'})+fld('owner.k','フリガナ',{ph:'例：タムラ コウジ'})+fld('owner.tel','電話番号',{type:'tel',mode:'tel',ph:'例：090-0000-0000',hint:'ハイフンは自動で入ります。'})+'</div><p class="hint">住所や送金先の口座は、あとから物件・台帳で入れられます。</p>';
+  }
+  h+='</div>';
+  var past=GK.parse(S.start)&&S.start<T;
+  h+='<div class="sec"><h3>物件</h3><div id="dup-prop">'+dupProp()+'</div><div class="grid">'+
+    /* 物件名 -> 住所の候補 (ganki-data.js); a chosen building also fills 建物の種類 and 築年 when they are empty */
+    fld('name','物件名',{req:1,ph:'例：サンハイツ北',hint:'物件名を入れると住所の候補が出ます。',attrs:' data-addr-name="f-prop-addr" data-addr-struct="f-prop-struct" data-addr-year="f-prop-year" role="combobox" aria-autocomplete="list" aria-expanded="false"'})+
+    fld('start','管理開始日',{req:1,type:'date',extra:chips('start',[['翌月1日',FNM],['翌々月1日',FNM2],['3か月後の1日',FNM3]]),hint:'この日から GANKI が管理します。'+(past?'<b>今日より前の日です。入居者へのお知らせは早めに送ってください。</b>':'')})+
+    fld('prop.addr','所在地',{req:1,wide:1,ph:'例：東京都架空区北町1-2-3（郵便番号7けたでも入れられます）',attrs:' data-addr-zip="1"'})+
+    fld('prop.struct','建物の種類（分かれば）',{ph:'例：RC造 3階建て',hint:'RC造＝鉄筋コンクリート。ほかに木造・鉄骨など'})+
+    fld('prop.year','築年（分かれば）',{mode:'numeric',ph:'例：2010'})+'</div></div>';
+  h+='<div class="sec"><h3>前の管理会社</h3><p class="hint">今この建物を管理している会社です。書類や鍵を受け取る相手になります。分からなければ空欄で進めます。</p><div class="grid">'+
+    fld('prev.n','会社名',{ph:'例：〇〇不動産管理'})+fld('prev.tel','電話番号',{type:'tel',mode:'tel',ph:'例：03-0000-0000',hint:S.owner.mode==='new'?'':'ハイフンは自動で入ります。'})+'</div></div>';
+  return h;
+}
+function stepDocs(){
+  var got=S.docs.filter(function(d){return d[1]}).length,needG=guaDocNeeded();
+  var h='<div><h2>2. 受け取る書類</h2><p class="lead">前の管理会社から受け取るものです。まだ届いていなくても先へ進めます。「まだ」のものは、管理開始日の7日前（'+md(docDue())+'）が期限の「やること」になります。</p></div>';
+  h+='<div class="toolbar"><span class="cap">受け取り済み '+got+' / '+S.docs.length+'</span>'+(got<S.docs.length?'<button class="act" type="button" id="allDocs">すべて受け取り済みにする</button>':'')+'</div>';
+  h+='<ul class="docs">'+S.docs.map(function(d,i){
+    var inf=docInfo(d[0]),off=inf.gua&&!needG;
+    return '<li class="doc'+(d[1]?' got':'')+'"><div class="doc-t"><b id="doc-'+i+'-t">'+esc(d[0])+(off?' <span class="pill">今回は不要</span>':'')+'</b><span class="hint">'+esc(inf.ex)+(off?' 部屋の入力で、保証会社に入っている部屋がありませんでした。':'')+'</span></div>'+
+      '<div class="doc-a"><div class="seg" role="group" aria-labelledby="doc-'+i+'-t"><button type="button" id="doc-'+i+'-1" data-doc="'+i+':1" aria-pressed="'+(!!d[1])+'">受け取り済み</button><button type="button" id="doc-'+i+'-0" data-doc="'+i+':0" aria-pressed="'+(!d[1])+'">まだ</button></div>'+
+      '<input class="docnote" id="doc-'+i+'-n" data-docnote="'+i+'" value="'+esc(d[2])+'" placeholder="メモ（例：2室分不足）" aria-label="'+esc(inf.short)+'のメモ" autocomplete="off"></div></li>';
+  }).join('')+'</ul>';
+  return h;
+}
+function roomRow(r,i){
+  var p='r'+i+'.',occ=!!str(r.ten).trim();
+  var inv=function(f){return errs[p+f]?' aria-invalid="true" aria-describedby="rooms-err"':''};
+  var opt=function(v,l){return '<option value="'+v+'"'+(r.gua===v?' selected':'')+'>'+l+'</option>'};
+  return '<div class="room" id="row-'+i+'">'+
+    '<div class="field f-no"><label for="r-'+i+'-no">部屋</label><input id="r-'+i+'-no" data-room="'+i+':no" value="'+esc(r.no)+'" placeholder="101" autocomplete="off"'+inv('no')+'></div>'+
+    '<div class="field f-ten"><div class="lblrow"><label for="r-'+i+'-ten">入居者名・フリガナ</label><span class="pill'+(occ?' ok':'')+'" id="r-'+i+'-tag">'+(occ?'入居中':'空室')+'</span></div><input id="r-'+i+'-ten" data-room="'+i+':ten" value="'+esc(r.ten)+'" placeholder="空欄なら空室" autocomplete="off"'+inv('ten')+'>'+
+      '<input class="kana" id="r-'+i+'-k" data-room="'+i+':k" value="'+esc(r.k)+'" placeholder="フリガナ（例：アオキ ヒナ）" aria-label="'+esc(r.no?r.no+' の':(i+1)+'行目の')+'フリガナ" autocomplete="off"></div>'+
+    '<div class="field f-tel"><label for="r-'+i+'-tel">電話（任意）</label><input id="r-'+i+'-tel" type="tel" inputmode="tel" data-room="'+i+':tel" value="'+esc(r.tel)+'" placeholder="090-0000-0000" autocomplete="off"'+inv('tel')+'></div>'+
+    '<div class="field f-rent"><label for="r-'+i+'-rent">家賃（月・円）</label><input id="r-'+i+'-rent" data-room="'+i+':rent" value="'+esc(r.rent)+'" placeholder="72000" inputmode="numeric" autocomplete="off"'+inv('rent')+'></div>'+
+    '<div class="f-more">'+
+    '<div class="field f-start"><label for="r-'+i+'-start">契約の始まり</label><input id="r-'+i+'-start" type="date" data-room="'+i+':start" value="'+esc(r.start)+'"'+inv('start')+'></div>'+
+    '<div class="field f-end"><label for="r-'+i+'-end">契約の終わり</label><input id="r-'+i+'-end" type="date" data-room="'+i+':end" value="'+esc(r.end)+'"'+inv('end')+'></div>'+
+    '<div class="field f-gua"><label for="r-'+i+'-gua">保証会社</label><select id="r-'+i+'-gua" data-room="'+i+':gua">'+opt('あり','あり')+opt('なし','なし')+opt('不明','分からない')+'</select></div>'+
+    '<div class="field f-gname" id="gn-'+i+'"'+(r.gua==='あり'?'':' hidden')+'><label for="r-'+i+'-guaName">保証会社の名前</label><input id="r-'+i+'-guaName" data-room="'+i+':guaName" list="gua-list" value="'+esc(r.guaName)+'" placeholder="例：ガンキ保証" autocomplete="off"'+inv('guaName')+'></div>'+
+    '<button class="act f-del" type="button" data-rmroom="'+i+'" aria-label="'+esc(r.no?r.no+' の行':(i+1)+'行目')+'を削除"'+(S.rooms.length<2?' disabled':'')+'>削除</button></div></div>';
+}
+function stepRooms(){
+  var c=counts(),open=S._pasteOpen||(!S._pasteClosed&&S.rooms.every(blankRow));
+  var h='<div><h2>3. 部屋と入居者</h2><p class="lead">部屋ごとに、今の入居者と契約の内容を入れます。入居者の名前が空の部屋は「空室」として登録します。フリガナと電話は分かれば入れてください。契約の始まりが空欄なら管理開始日を仮に入れ、契約の終わりが空欄なら始まりから2年ごとの更新で計算します（どちらも「契約書で確認」のやることになります）。</p></div>';
+  if(GK.can('doc.read'))h+='<div class="gkd-bar"><button class="btn" type="button" id="readDocRooms">書類から読み込む</button><span class="hint">入居者名簿や賃貸借契約書（何部屋分でも）から、下の表にまとめて入れます。同じ部屋番号は上書きします。</span></div>';
+  h+='<p class="why"><b>保証会社</b>（入居者が家賃を払えないときに立て替える会社）：保証会社がある部屋とない部屋で、入居者へのお知らせの文面が変わります（ない部屋は家賃の振込先の変更も案内します）。分からない部屋があっても先へ進めます。登録すると「前オーナーに保証会社の加入を確認」のやることになります。</p>';
+  h+='<div class="sec"><div class="toolbar"><button class="btn" type="button" id="pasteToggle" aria-expanded="'+!!open+'" aria-controls="pasteBox">名簿から貼り付け</button><span class="hint">エクセルなどの入居者名簿をコピーして、まとめて入れられます。</span></div>';
+  if(open)h+='<div class="paste" id="pasteBox"><label for="paste" class="hint">1行に1部屋ずつ、タブ区切り（エクセルからのコピー）かカンマ区切りで入れます。読み取る並びは次のどれかです。名前が空の行は空室です。</label>'+
+    '<ul class="hint" id="pasteFmt" style="margin:0;padding-left:1.2em"><li><b>8列</b>：部屋, 名前, フリガナ, 電話, 家賃, 契約の始まり, 契約の終わり, 保証会社（後ろの列は省略できます）<br>例：101, 青木 陽菜, アオキ ヒナ, 090-0000-1111, 72000, 2024/4/1, 2028/3/31, ガンキ保証</li>'+
+    '<li><b>4〜5列（これまでの形）</b>：部屋, 名前, 家賃, 契約の終わり[, 保証会社]<br>例：103, 石川 蓮, 71000, 2026/12/31, なし</li>'+
+    '<li><b>1行目が見出し</b>（「部屋」「名前」「フリガナ」「電話」「家賃」「始まり」「終わり」「保証会社」など）なら、列の順番は自由です。</li></ul>'+
+    '<p class="hint">6列以上の行があれば8列の並び、なければ4〜5列の並びとして読みます。保証会社は「なし」「分からない」か会社名です。</p>'+
+    '<textarea id="paste" placeholder="101, 青木 陽菜, アオキ ヒナ, 090-0000-1111, 72000, 2024/4/1, 2028/3/31, ガンキ保証&#10;102, , , , 70000&#10;103, 石川 蓮, イシカワ レン, , 71000, , , なし"'+(errs.paste?' aria-invalid="true" aria-describedby="paste-err pasteFmt"':' aria-describedby="pasteFmt"')+'>'+esc(S._paste||'')+'</textarea>'+errBox('paste','paste-err')+'<div class="toolbar"><button class="btn primary" type="button" id="pasteGo">表に入れる</button><span class="hint">同じ部屋番号の行は、貼り付けた内容で上書きします。</span></div>'+
+    (GK.ai&&GK.can('ai.columns')?'<div class="toolbar"><button class="btn gk-ai-btn" type="button" id="aiCols" aria-controls="aiColsBox">AIで列を合わせる</button><span class="hint">見出しがいつもと違う名簿（「賃料(円)」「契約者氏名」「部屋No」など）は、AIが列と欄の対応を提案します。取り込む前に確かめられます。</span></div>'+aiColsHtml():'')+'</div>';
+  h+='</div>';
+  h+='<div class="field"><span class="lbl">部屋 '+c.rooms+'室（入居中 '+c.occupied+'・空室 '+c.vacant+'）<span class="req">必須</span></span><span class="hint">電話番号のハイフンは自動で入ります。</span><div class="rooms">'+S.rooms.map(roomRow).join('')+'</div>'+errBox('rooms','rooms-err')+'</div>';
+  h+='<div class="bulk"><button class="act" type="button" id="addRoom">＋ 部屋を1つ追加</button><span>まとめて：</span><input id="b-from" inputmode="numeric" placeholder="101" aria-label="最初の部屋番号" value="'+esc(S._bf||'')+'"'+(errs.bulk?' aria-invalid="true" aria-describedby="bulk-err"':'')+'><span>〜</span><input id="b-to" inputmode="numeric" placeholder="105" aria-label="最後の部屋番号" value="'+esc(S._bt||'')+'"'+(errs.bulk?' aria-invalid="true" aria-describedby="bulk-err"':'')+'><button class="act" type="button" id="bulkAdd">を追加</button></div>'+errBox('bulk','bulk-err');
+  h+='<div class="bulk"><label for="all-gua">保証会社名：</label><input class="wide" id="all-gua" list="gua-list" placeholder="例：ガンキ保証" value="'+esc(S._ag||'')+'" autocomplete="off"'+(errs.allGua?' aria-invalid="true" aria-describedby="allgua-err"':'')+'><button class="act" type="button" id="allGua">全室に同じ保証会社</button><span class="hint">入居者がいる部屋すべてを「あり」にします。</span></div>'+errBox('allGua','allgua-err');
+  return h;
+}
+function letterText(kind){
+  var st=S.start,prevN=S.prev.n.trim()||'これまでの管理会社',o=ownerName()||'（オーナー）',bn=S.name.trim()||'（物件名）';
+  var L=['〔部屋〕号室　〔お名前〕様','','管理会社変更のお知らせ','','いつも '+bn+' をご利用いただき、ありがとうございます。',
+    'このたび、建物の管理を '+jp(st)+'（'+GK.wd(st)+'）から次の会社が担当することになりました。','',
+    '新しい管理会社：'+COMPANY+'（電話 '+COMPANY_TEL+'）','建物のオーナー：'+o+' 様','これまでの管理会社：'+prevN+'（'+jp(GK.addDays(st,-1))+' まで）',''];
+  if(kind==='yes')L.push('家賃のお支払い方法は変わりません。これまでどおり、ご契約の保証会社を通してお支払いください。');
+  else L.push('家賃の振込先が変わります。'+jp(st)+' 以降にお支払いいただく家賃から、次の口座にお振込みください。','　'+BANK,'それより前のお支払いは、これまでの振込先のままです。');
+  L.push('','お部屋の設備の故障やご相談は、'+jp(st)+' から '+COMPANY+' へご連絡ください。','ご契約の内容（家賃・契約期間など）は変わりません。','','今後ともよろしくお願いいたします。','',COMPANY+'　'+COMPANY_TEL);
+  return L.join('\n');
+}
+function letterBox(kind,n){
+  var custom=!!S.letters.text[kind],title=kind==='yes'?'保証会社ありの部屋':'保証会社なしの部屋';
+  return '<div class="sec letter"><div class="card-head"><h3>'+title+'（'+n+'通）の文面'+(kind==='no'?' · 振込先の案内つき':'')+'</h3>'+(custom?'<button class="act" type="button" data-reletter="'+kind+'">元の文面に戻す</button>':'')+'</div>'+
+    '<div class="field"><label for="lt-'+kind+'" class="sr">'+title+'の文面</label><textarea id="lt-'+kind+'" data-letter="'+kind+'" rows="14">'+esc(S.letters.text[kind]||letterText(kind))+'</textarea></div>'+
+    '<p class="hint">〔部屋〕〔お名前〕は、1通ずつ部屋番号と入居者名に入れ替わります。文面はここで直せます。'+(custom?'手直しした文面は、物件名などを変えても自動では変わりません。':'')+'</p></div>';
+}
+function stepLetters(){
+  var c=counts(),so=sendOn(),n=c.yes+c.no,auto=GK.takeoverSendOn({start:S.start,letters:{}});
+  var stat=function(cls,k,v,u,sub){return '<div class="stat '+cls+'"><span class="k">'+k+'</span><span class="v">'+v+'<small>'+u+'</small></span>'+(sub?'<span class="k">'+sub+'</span>':'')+'</div>'};
+  var h='<div><h2>4. 入居者へのお知らせ</h2><p class="lead">管理会社が変わることを入居者に知らせる文書です。部屋の保証会社に合わせて、2種類の文面に分けて作ります。</p></div>';
+  h+='<div class="stats">'+stat('ok','保証会社あり',c.yes,'通')+stat('info','保証会社なし',c.no,'通')+stat(c.unknown?'warn':'','分からない',c.unknown,'室',c.unknown?'確認してから作成':'')+'</div>';
+  if(c.unknown)h+='<p class="hint">分からない '+c.unknown+'室は、前オーナーに保証会社の加入を確かめてから作ります（登録すると「やること」に入ります）。</p>';
+  h+='<div class="grid">'+fld('letters.sendOn','送る予定日',{req:1,type:'date',min:T,value:so,auto:S.letters.sendOn?'':'自動',
+      extra:chips('letters.sendOn',[['管理開始の30日前',auto],['今日',T]]),
+      hint:'管理開始日（'+md(S.start)+'）の30日前を目安にしています。今日より前にはできません。'})+'</div>';
+  if(!n)h+='<p class="note">今お知らせを送る部屋はありません'+(c.occupied?'（保証会社が分からない部屋だけです）':'（入居者がいる部屋がありません）')+'。</p>';
+  if(c.yes)h+=letterBox('yes',c.yes);
+  if(c.no)h+=letterBox('no',c.no);
+  if(n)h+='<div class="drafted">'+(S.letters.drafted?'<span class="pill ok">下書きを作成済み</span>':'')+'<button class="btn" type="button" id="draft">'+(S.letters.drafted?'下書きを作り直す':'下書きを作成')+'</button><span class="hint">'+n+'通の下書きを作ります。下書きは登録のあとでも作れます。送るのは '+md(so)+' の予定です。</span></div>';
+  return h;
+}
+/* 「電話する」 next to a saved contact's number (ganki-data.js records the call); '' with an older ganki-data.js */
+function callBtn(tel,o){return tel&&typeof GK.callLink==='function'?' '+GK.callLink(tel,o):''}
+function cbox(title,i,rows,extra){return '<div class="cbox"><div class="h"><b>'+title+'</b><button class="link" type="button" data-go="'+i+'" aria-label="'+esc(STEPS[i])+'を直す">直す</button></div><dl class="kv">'+rows.filter(function(r){return r[1]}).map(function(r){return '<dt>'+r[0]+'</dt><dd>'+r[1]+'</dd>'}).join('')+'</dl>'+(extra||'')+'</div>'}
+function stepCheck(){
+  var c=counts(),R=rooms(),o=ownerName(),isNew=S.owner.mode==='new',ts=planTasks(),so=sendOn();
+  var got=S.docs.filter(function(d){return d[1]}).map(function(d){return esc(docInfo(d[0]).short)}),miss=S.docs.filter(function(d){return !d[1]}).map(function(d){return esc(docInfo(d[0]).short)+(d[2].trim()?'（'+esc(d[2].trim())+'）':'')});
+  var h='<div><h2>5. 確認して登録</h2><p class="lead">この内容で、物件・部屋・入居者・契約をまとめて登録します。直したいところは「直す」から戻れます。入力した内容は消えません。</p></div><div class="confirm">';
+  h+=cbox('物件とオーナー'+(isNew?' <span class="pill new">新しいオーナー</span>':''),0,[['物件名',esc(S.name)],['所在地',esc(S.prop.addr)],['建物',esc([S.prop.struct.trim(),S.prop.year?str(S.prop.year).trim()+'年築':''].filter(Boolean).join(' · '))],['管理開始日',jp(S.start)+'（'+GK.wd(S.start)+'）'],['オーナー',esc(o)+(isNew&&S.owner.tel.trim()?'（'+esc(ft(S.owner.tel))+'）':'')],['前の管理会社',S.prev.n.trim()?esc(S.prev.n.trim())+(S.prev.tel.trim()?'（'+esc(ft(S.prev.tel))+'）'+callBtn(ft(S.prev.tel),{name:S.prev.n.trim(),role:'前の管理会社'}):''):'<span class="pill">未入力</span>']]);
+  h+=cbox('受け取る書類',1,[['受け取り済み',got.length?got.join('、'):'なし'],['まだ',miss.length?miss.join('、')+'<br><span class="hint">期限 '+md(docDue())+' のやることにします</span>':'なし（すべて受け取り済み）']]);
+  var list=R.slice(0,8).map(function(r){var tm=r.ten?term(r):null;return esc(r.no)+'：'+(r.ten?esc(r.ten)+' 様 · '+yen(r.rent)+' · 契約 '+(tm.startUnknown?'始まり未確認':jp(tm.start))+'〜'+jp(tm.end)+(tm.endUnknown?'（仮）':'')+' · '+(r.gua==='あり'?esc(r.guaName):r.gua==='なし'?'保証会社なし':'保証会社は確認中'):'空室')}).join('<br>')+(R.length>8?'<br>ほか '+(R.length-8)+'室':'');
+  h+=cbox('部屋と入居者',2,[['部屋',c.rooms+'室（入居中 '+c.occupied+'・空室 '+c.vacant+'）'],['保証会社','あり '+c.yes+'・なし '+c.no+'・分からない '+c.unknown],['内訳',list]]);
+  h+=cbox('入居者へのお知らせ',3,[['送る数',c.yes+c.no?'保証会社あり '+c.yes+'通・なし '+c.no+'通':'なし'],['送る予定日',c.yes+c.no?md(so):''],['下書き',c.yes+c.no?(S.letters.drafted?'<span class="pill ok">作成済み</span>':'まだ（登録のあとでも作れます）'):''],['あとで作る',c.unknown?c.unknown+'室（保証会社を確認してから）':'']]);
+  h+='<div class="cbox"><div class="h"><b>登録すると入る「やること」（'+ts.length+'件）</b></div><ul>'+ts.map(function(x){return '<li>'+esc(x.t)+' <span class="hint">期限 '+md(x.due)+'</span></li>'}).join('')+'</ul><p class="hint">ホームの「今日確認すること」に、担当 '+esc(GK.ME)+' で入ります。</p></div>';
+  return h+'</div>';
+}
+function stepDone(){
+  var pid=S.propId,p=GK.prop(pid),c=counts();
+  if(!p)return '<div class="result"><p class="big">この引継ぎは登録済みです</p><p class="note">物件（'+esc(pid||'')+'）が見つかりません。別の画面で取り消されたかもしれません。</p><div class="foot" style="width:100%"><div class="r"><a class="btn" href="index.html">ホームへ</a></div><button class="btn ghost" type="button" id="fresh">別の引継ぎを始める</button></div></div>';
+  var first=p.rooms.length?pid+'-'+p.rooms[0]:'',tasks=GK.db.tasks.filter(function(k){return str(k.unit).indexOf(pid+'-')===0&&!k.done&&(!GK.taskVisible||GK.taskVisible(k))}).length;
+  return '<div class="result"><p class="big">引継ぎを登録しました</p><ul>'+
+    (S.owner.mode==='new'?'<li>オーナー「'+esc(ownerName())+'」</li>':'')+
+    '<li>物件「'+esc(p.n)+'」（'+esc(pid)+'・管理開始 '+jp(p.since)+'）と部屋 '+p.rooms.length+'室</li>'+
+    (c.occupied?'<li>入居者 '+c.occupied+'人と、その契約（契約中）</li>':'<li>入居者はいません（すべて空室）</li>')+
+    (tasks?'<li>やること '+tasks+'件をホームの「今日確認すること」に入れました</li>':'')+'</ul>'+
+    '<p class="hint">この引継ぎは、ホームの「管理の引継ぎ」に「完了」として残ります。</p>'+
+    '<div class="foot" style="width:100%"><div class="r">'+(first?'<a class="btn primary" href="properties.html#room-'+esc(first)+'">物件・台帳で見る</a>':'<a class="btn primary" href="properties.html">物件・台帳で見る</a>')+'<a class="btn" href="index.html">ホームへ</a></div><button class="btn ghost" type="button" id="fresh">別の引継ぎを始める</button></div></div>';
+}
+
+function renderSteps(){
+  $('#steps').innerHTML=STEPS.map(function(s,i){
+    var ok=i<S.step&&i!==S.cur&&!Object.keys(check(i)).length;
+    return '<li><button type="button" data-go="'+i+'" aria-label="手順 '+(i+1)+'：'+s+(ok||S.done?'（済み）':'')+'"'+(i===S.cur&&!S.done?' aria-current="step"':'')+' class="'+(ok||S.done?'is-done':'')+'"'+(S.done?' disabled':'')+'><span class="n">'+(ok||S.done?'✓':i+1)+'</span><span class="lab">'+s+'</span></button></li>';
+  }).join('');
+  $('#stepNow').textContent=S.done?'':'手順 '+(S.cur+1)+'/'+STEPS.length+'：'+STEPS[S.cur];
+}
+function renderSum(){
+  var c=counts(),o=ownerName(),got=S.docs.filter(function(d){return d[1]}).length,miss=S.docs.filter(function(d){return !d[1]}).map(function(d){return docInfo(d[0]).short});
+  var none='<span class="empty">まだです</span>',blk=function(k,v,first){return '<div'+(first?'':' class="blk"')+'><dt>'+k+'</dt><dd>'+v+'</dd></div>'};
+  var h='<h2>引継ぎの内容</h2><button class="link" type="button" id="sumToggle" style="display:none">内容を見る</button><dl>';
+  h+=blk('物件',S.name.trim()?esc(S.name.trim())+(S.prop.addr.trim()?'<br><span class="hint">'+esc(S.prop.addr.trim())+'</span>':''):none,1);
+  h+=blk('オーナー',o?esc(o)+(S.owner.mode==='new'?' <span class="pill new">新規</span>':''):none);
+  h+=blk('管理開始日',GK.parse(S.start)?jp(S.start)+'（'+GK.wd(S.start)+'）':none);
+  h+=blk('受け取った書類',got+' / '+S.docs.length+(miss.length&&S.step>=1?'<br><span class="hint">まだ：'+esc(miss.join('、'))+'</span>':''));
+  h+=blk('部屋',c.rooms?c.rooms+'室（入居中 '+c.occupied+'・空室 '+c.vacant+'）<br><span class="hint">保証会社 あり '+c.yes+'・なし '+c.no+'・分からない '+c.unknown+'</span>':none);
+  h+=blk('入居者へのお知らせ',c.yes+c.no?(c.yes+c.no)+'通 · '+md(sendOn())+' に送る予定'+(S.letters.drafted?' <span class="pill ok">下書き済み</span>':''):'<span class="empty">—</span>');
+  h+='</dl><p class="hint">'+(S.done?'登録済みです。':S.id?'保存済み（'+esc(S.updated.slice(5,10).replace('-','/')+' '+S.updated.slice(11,16))+'）。ホームの「管理の引継ぎ」から続きを開けます。':'「次へ」か「途中で保存」を押すと保存され、ホームから続きを開けるようになります。')+'</p>';
+  var el=$('#sum');el.innerHTML=h;
+  if(window.innerWidth<=640){var b=$('#sumToggle');if(b){b.style.display='';b.textContent=el.classList.contains('open')?'内容を隠す':'内容を見る'}}
+}
+function localDraft(){var d=GK.store.get(KEY);return d&&d.docs&&d.rooms&&d.owner&&!d.id&&hasInput(d)?d:null}
+function renderRestore(){
+  var h='';
+  if(note)h+='<div class="warnbox" role="status">'+note+'</div>';
+  if(S._restored)h+='<div class="restore" role="status"><span>保存する前の書きかけを、続きから開きました。</span><button class="act" type="button" id="dropDraft">捨てて最初から</button></div>';
+  if(S._opened)h+='<div class="restore info" role="status"><span>保存してある引継ぎ「'+esc(S.name||'物件名なし')+'」を開きました。続きから入れられます。</span></div>';
+  if(!S.id&&!S.done){
+    var others=GK.takeovers().filter(function(x){return !x.done}).sort(function(a,b){return str(a.updated)<str(b.updated)?1:-1});
+    others.slice(0,3).forEach(function(x){h+='<div class="restore" role="status"><span>書きかけの引継ぎがあります（'+esc(x.name||'物件名なし')+' · 次：'+esc(GK.takeoverNext(x).label)+'）</span><button class="act" type="button" data-open="'+esc(x.id)+'">続きから →</button></div>'});
+    if(others.length>3)h+='<p class="hint">ほか '+(others.length-3)+'件は、ホームの「管理の引継ぎ」から開けます。</p>';
+  }else if(S.id&&!S.done){var ld=localDraft();if(ld)h+='<div class="restore" role="status"><span>まだ保存していない書きかけもあります（'+esc(ld.name||'物件名なし')+'）。</span><button class="act" type="button" data-open="local">そちらを開く</button></div>'}
+  $('#restore').innerHTML=h;
+  var rs=$('#reset');if(rs){rs.hidden=!!S.done;rs.textContent=S.id?'この引継ぎを取りやめる':'最初からやり直す'}
+}
+function render(fid){
+  renderSteps();renderSum();
+  var body;
+  if(S.done)body=stepDone();
+  else{
+    body=[stepOne,stepDocs,stepRooms,stepLetters,stepCheck][S.cur]();
+    body+='<div class="foot"><button class="btn" type="button" id="back"'+(S.cur===0?' disabled':'')+'>‹ 戻る</button><div class="r"><button class="btn ghost" type="button" id="saveHome">途中で保存してホームへ</button>'+(S.cur===4?'<button class="btn primary" type="button" id="save">引継ぎを登録</button>':'<button class="btn primary" type="button" id="next">次へ ›</button>')+'</div></div>';
+  }
+  $('#card').innerHTML=body;
+  renderRestore();
+  if(fid){var f=document.getElementById(fid);if(f)f.focus()}
+}
+function focusHead(){var h=$('#card h2')||$('#card .big');if(h){h.setAttribute('tabindex','-1');h.focus({preventScroll:true});$('#card').scrollIntoView({block:'nearest'})}}
+function focusBad(){var bad=document.querySelector('#card [aria-invalid="true"]')||document.querySelector('#card .err');if(bad){bad.scrollIntoView({block:'center'});if(/INPUT|SELECT|TEXTAREA/.test(bad.tagName))bad.focus()}}
+function go(i,force){
+  if(i>S.cur&&!force){var e=check(S.cur);if(Object.keys(e).length){errs=e;render();focusBad();return}}
+  errs={};S.cur=i;if(i>S.step)S.step=i;delete S._restored;delete S._opened;note='';
+  persist();render();focusHead();
+}
+function openRec(id){
+  fresh();var r=GK.takeover(id);
+  if(!r){note='<span>この引継ぎは見つかりませんでした（取りやめたか、別のブラウザーで作ったものかもしれません）。新しく始められます。</span>';S=blank();clearHash();errs={};render();return}
+  S=fromRec(r);S._opened=!r.done;errs={};note='';setHash(r.id);render();focusHead();
+}
+/* start over (new, unsaved) or cancel a saved takeover; asks in the page first, and the toast can undo */
+function startOver(ask){
+  if(S.id&&!S.done){
+    var doCancel=function(){
+      fresh();var list=GK.takeovers(),idx=-1;list.forEach(function(x,j){if(x.id===S.id)idx=j});
+      var rec=idx>=0?list.splice(idx,1)[0]:toRec(S),name=S.name||'物件名なし';GK.save();
+      S=blank();errs={};note='';clearHash();render();
+      GK.toast('「'+name+'」の引継ぎを取りやめました',function(){fresh();var l=GK.takeovers();if(!GK.takeover(rec.id))l.splice(Math.max(0,Math.min(idx,l.length)),0,rec);GK.save();openRec(rec.id);GK.toast('元に戻しました')});
+    };
+    GK.confirmBar($('#restore'),'この引継ぎ（'+(S.name||'物件名なし')+'）を取りやめて、入力した内容を消しますか？','取りやめて消す',doCancel,{where:'beforebegin'});return;
+  }
+  var doIt=function(){
+    var prev=JSON.parse(JSON.stringify(S));
+    S=blank();errs={};note='';GK.store.drop(KEY);clearHash();render();
+    if(hasInput(prev)&&!prev.done)GK.toast('最初からにしました',function(){S=prev;delete S._restored;keep();render();GK.toast('元に戻しました')});
+  };
+  if(ask&&!S.done&&(S.cur>0||hasInput(S))){GK.confirmBar($('#restore'),'入力した内容を消して、最初からやり直しますか？','消して最初から',doIt,{where:'beforebegin'});return}
+  doIt();
+}
+
+/* ---- 名簿から貼り付け: 部屋, 名前, 家賃, 契約の終わり[, 保証会社] ---- */
+function splitLine(line){
+  if(line.indexOf('\t')>=0)return line.split('\t');
+  var out=[],cur='',q=false;
+  for(var i=0;i<line.length;i++){var ch=line[i];if(ch==='"'){q=!q;continue}if(!q&&(ch===','||ch==='，'||ch==='、')){out.push(cur);cur='';continue}cur+=ch}
+  out.push(cur);
+  /* 72,000 written without quotes: join the thousands back */
+  for(var j=out.length-1;j>=3;j--)if(/^\d{3}$/.test(out[j].trim())&&/^\d{1,3}$/.test(out[j-1].trim())&&j-1>=2){out[j-1]=out[j-1].trim()+out[j].trim();out.splice(j,1)}
+  return out;
+}
+function parseRent(s){s=str(s).normalize('NFKC').trim();if(!s)return '';if(/万/.test(s)){var f=parseFloat(s.replace(/[^\d.]/g,''));return f?String(Math.round(f*10000)):''}var n=GK.num(s);return n>0?String(n):''}
+function parseDate(s){
+  s=str(s).normalize('NFKC').trim();if(!s)return {v:''};
+  var m=/(\d{4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/.exec(s);if(!m)return {v:'',bad:true};
+  var d=new Date(+m[1],m[2]-1,+m[3]);if(d.getMonth()!==m[2]-1)return {v:'',bad:true};
+  return {v:GK.iso(d)};
+}
+function parseGua(s){
+  s=str(s).normalize('NFKC').trim();if(!s)return null;
+  if(/^(なし|無し?|×|-|ー|未加入)$/.test(s))return {gua:'なし',guaName:''};
+  if(/不明|分から|わから|\?/.test(s))return {gua:'不明',guaName:''};
+  if(/^(あり|有り?|○|加入)$/.test(s))return {gua:'あり',guaName:''};
+  return {gua:'あり',guaName:s};
+}
+/* accepted column orders (see the hint above the box):
+   8 columns  部屋, 名前, フリガナ, 電話, 家賃, 契約の始まり, 契約の終わり, 保証会社  (trailing columns may be left out)
+   4-5 columns (older format)  部屋, 名前, 家賃, 契約の終わり[, 保証会社]
+   a header row in the first 2 lines (部屋・名前・フリガナ・電話・家賃・始まり・終わり・保証会社 …) maps the columns in any order.
+   Without a header: 8-column order when any line has 6 or more columns, otherwise the older order. */
+var COLS8=['no','ten','k','tel','rent','start','end','gua'],COLS5=['no','ten','rent','end','gua'];
+function headKey(h){
+  h=str(h).normalize('NFKC').replace(/\s/g,'');if(!h)return '';
+  if(/保証/.test(h))return 'gua';
+  if(/フリガナ|ふりがな|カナ|かな|読み|kana/i.test(h))return 'k';
+  if(/電話|tel|携帯|連絡先|phone/i.test(h))return 'tel';
+  if(/家賃|賃料|rent/i.test(h))return 'rent';
+  if(/終わ|終了|満了|期限|まで|end/i.test(h))return 'end';
+  if(/始ま|開始|始期|入居日|契約日|から|start/i.test(h))return 'start';
+  if(/部屋|号室|room|^no\.?$/i.test(h))return 'no';
+  if(/名前|氏名|入居者|契約者|name/i.test(h))return 'ten';
+  return '';
+}
+/* a header row: no digits anywhere, and at least 2 known column names including 部屋 */
+function headMap(c){
+  if(c.some(function(x){return /\d/.test(x)}))return null;
+  var m=c.map(headKey),known=m.filter(Boolean);
+  return known.length>=2&&m.indexOf('no')>=0?m:null;
+}
+function parsePaste(text){
+  var rows=[],bad=0,badEnd=0,lines=[],map=null;
+  str(text).split(/\r?\n/).forEach(function(line){if(line.trim())lines.push(splitLine(line).map(function(x){return str(x).normalize('NFKC').trim()}))});
+  for(var h=0;h<Math.min(2,lines.length);h++){var hm=headMap(lines[h]);if(hm){map=hm;lines.splice(0,h+1);break}}
+  /* columns to the right of the header keep the default order for that width (e.g. an old 4-column header + 保証会社 in column 5) */
+  if(map){var dflt=map.length<=5?COLS5:COLS8;for(var x=map.length;x<dflt.length;x++)map[x]=map.indexOf(dflt[x])<0?dflt[x]:''}
+  var fmt='head';
+  if(!map){map=lines.some(function(c){return c.length>=6})?COLS8:COLS5;fmt=map===COLS8?'8':'old'}
+  var r=rowsFrom(lines,map);r.fmt=fmt;return r;
+}
+function pasteLines(text){var lines=[];str(text).split(/\r?\n/).forEach(function(line){if(line.trim())lines.push(splitLine(line).map(function(x){return str(x).normalize('NFKC').trim()}))});return lines}
+/* 「AIで列を合わせる」: the first line is the header, map[i] = the field of column i ('' = 取り込まない) */
+function parseWithMap(text,map){var lines=pasteLines(text);lines.shift();var r=rowsFrom(lines,map);r.fmt='ai';return r}
+function rowsFrom(lines,map){
+  var rows=[],bad=0,badEnd=0;
+  lines.forEach(function(c){
+    var v={};map.forEach(function(k,i){if(k&&!(k in v))v[k]=c[i]==null?'':c[i]});
+    var no=normNo(v.no);
+    if(!no){bad++;return}
+    var ten=str(v.ten).replace(/\s*様$/,'').trim();if(/^(空室|空き|空|なし|-|ー)$/.test(ten))ten='';
+    var s=parseDate(v.start),e=parseDate(v.end);if(e.bad||s.bad)badEnd++;
+    if(s.v&&e.v&&s.v>e.v){e={v:''};badEnd++}
+    rows.push({no:no,ten:ten,k:str(v.k).replace(/\s*様$/,'').trim(),tel:ft(v.tel),rent:parseRent(v.rent),start:s.v,end:e.v,g:parseGua(v.gua)});
+  });
+  return {rows:rows,bad:bad,badEnd:badEnd};
+}
+/* ---- 「AIで列を合わせる」 (2026-10-19): header -> field proposal (GK.ai.columns in ganki-data.js; demo = synonyms + fuzzy).
+   The person can change every column; 「この対応で取り込む」 then fills the table like 「表に入れる」 (元に戻す works). ---- */
+var AI_FIELDS=[
+  {k:'no',n:'部屋番号',syn:['部屋','部屋番号','部屋No','部屋no.','号室','室番号','ルームNo','room','号','室'],look:'room',strict:true},
+  {k:'ten',n:'名前',syn:['名前','氏名','お名前','入居者','入居者名','入居者氏名','契約者','契約者名','契約者氏名','借主','賃借人','name'],look:'name'},
+  {k:'k',n:'フリガナ',syn:['フリガナ','ふりがな','カナ','氏名カナ','よみがな','読み','セイメイ','kana'],look:'kana'},
+  {k:'tel',n:'電話',syn:['電話','電話番号','携帯','携帯番号','携帯電話','連絡先','TEL','phone'],look:'tel',strict:true},
+  {k:'rent',n:'家賃',syn:['家賃','賃料','月額賃料','月額','家賃(円)','賃料(円)','rent'],look:'money',strict:true},
+  {k:'start',n:'契約の始まり',syn:['契約の始まり','始まり','契約開始','契約開始日','開始日','始期','入居日','契約日','start'],look:'date',strict:true},
+  {k:'end',n:'契約の終わり',syn:['契約の終わり','終わり','契約終了','契約終了日','終了日','満了日','契約満了','満了','期限','end'],look:'date',strict:true},
+  {k:'gua',n:'保証会社',syn:['保証会社','保証会社名','家賃保証','保証','保証の有無'],look:'gua'}
+];
+var AIC=null; /* {txt, heads[], cols:[{i, head, key, conf, why, samples}], err} */
+function aiColsHtml(){
+  if(!AIC)return '';
+  var fn=function(k){var f=AI_FIELDS.filter(function(x){return x.k===k})[0];return f?f.n:'取り込まない'};
+  var h='<div class="gk-ai" id="aiColsBox" role="group" aria-labelledby="aiColsT" style="margin-top:8px">'+GK.ai.head('columns','名簿の列と欄の対応','aiColsT');
+  h+='<p class="hint">1行目の見出しを読んで、どの欄に入れるかを提案しました。違うときは右の欄を選び直してください。</p>';
+  h+='<div style="overflow-x:auto;max-width:100%"><table class="gk-ai-map"><thead><tr><th scope="col">名簿の見出し</th><th scope="col">入れる欄</th><th scope="col">確からしさ</th><th scope="col">最初の2行</th></tr></thead><tbody>'+
+    AIC.cols.map(function(c){return '<tr><td data-label="名簿の見出し"><b>'+esc(c.head||'（見出しなし）')+'</b><div class="s">'+esc(c.why)+'</div></td>'+
+      '<td data-label="入れる欄"><label class="sr" for="aic-'+c.i+'">「'+esc(c.head||(c.i+1)+'列目')+'」を入れる欄</label><select id="aic-'+c.i+'" data-aicol="'+c.i+'"><option value="">取り込まない</option>'+AI_FIELDS.map(function(f){return '<option value="'+f.k+'"'+(c.key===f.k?' selected':'')+'>'+esc(f.n)+'</option>'}).join('')+'</select></td>'+
+      '<td data-label="確からしさ">'+(c.user?'<span class="gk-ai-conf">選び直しました</span>':c.key?GK.ai.confPill(c.conf):'<span class="s">—</span>')+'</td>'+
+      '<td data-label="最初の2行">'+(c.samples.filter(Boolean).length?c.samples.map(function(v){return esc(v||'（空）')}).join('<br>'):'<span class="s">（空）</span>')+'</td></tr>'}).join('')+'</tbody></table></div>';
+  h+='<p class="hint">いま：'+AIC.cols.filter(function(c){return c.key}).map(function(c){return esc(c.head||(c.i+1)+'列目')+' → '+esc(fn(c.key))}).join('、')+'</p>';
+  h+='<p class="err" id="aiColsErr" role="alert">'+esc(AIC.err||'')+'</p>';
+  h+='<div class="gk-ai-acts"><button class="btn primary" type="button" id="aiColsGo">この対応で取り込む</button><button class="btn" type="button" id="aiColsNo">やめる</button></div>';
+  return h+'<p class="hint">取り込んだあとも、下の表で1部屋ずつ直せます。間違えたときは「元に戻す」で戻せます。</p></div>';
+}
+function aiColsStart(){
+  var ta=$('#paste'),txt=ta?ta.value:S._paste||'';S._paste=txt;
+  var lines=pasteLines(txt);
+  if(lines.length<2){AIC=null;errs.paste='1行目に見出し（「部屋No」「契約者氏名」など）、2行目から名簿を入れてから押してください。';render('paste');return}
+  var heads=lines[0],w=Math.max.apply(null,lines.map(function(c){return c.length}));
+  while(heads.length<w)heads.push('');
+  var cols=GK.ai.columns(heads,lines.slice(1),AI_FIELDS);
+  delete errs.paste;AIC={txt:txt,sig:heads.join('\u0001'),cols:cols,err:''};render('aic-0');
+}
+function aiColsGo(){
+  if(!AIC)return;
+  var ta=$('#paste');if(ta&&ta.value!==AIC.txt){var l0=pasteLines(ta.value)[0]||[];while(l0.length<AIC.cols.length)l0.push('');
+    if(l0.join('\u0001')!==AIC.sig){AIC.err='名簿の見出しが変わりました。もう一度「AIで列を合わせる」を押してください。';render('aiCols');return}AIC.txt=ta.value;S._paste=ta.value}
+  var map=AIC.cols.map(function(c){return c.key||''}),seen={},dup='';
+  map.forEach(function(k){if(k){if(seen[k])dup=k;seen[k]=1}});
+  var nm=function(k){return (AI_FIELDS.filter(function(f){return f.k===k})[0]||{}).n||k};
+  if(map.indexOf('no')<0){AIC.err='「部屋番号」に入れる列を選んでください（部屋番号がないと取り込めません）。';render('aic-0');return}
+  if(dup){AIC.err='「'+nm(dup)+'」に2つの列を選んでいます。どちらか1つにしてください。';var di=AIC.cols.filter(function(c){return c.key===dup})[1];render(di?'aic-'+di.i:'aiColsErr');return}
+  var txt=AIC.txt,res=parseWithMap(txt,map);
+  if(!res.rows.length){AIC.err='部屋番号が読み取れる行がありませんでした。「部屋番号」の列が合っているか確かめてください。';render('aic-'+map.indexOf('no'));return}
+  AIC=null;applyPaste(res,txt);
+}
+/* the parsed rows -> the room table (same 部屋番号 = 上書き, a new number = 追加); 元に戻す puts the table back */
+function applyPaste(res,txt){
+  var prevR=JSON.parse(JSON.stringify(S.rooms)),added=0,upd=0;
+  S.rooms=S.rooms.filter(function(r){return !blankRow(r)});
+  res.rows.forEach(function(x){
+    var r=S.rooms.filter(function(y){return normNo(y.no)===x.no})[0];
+    if(r)upd++;else{r=blankRoom(x.no);S.rooms.push(r);added++}
+    r.ten=x.ten;if(x.k)r.k=x.k;if(x.tel)r.tel=x.tel;if(x.rent)r.rent=x.rent;if(x.start)r.start=x.start;if(x.end)r.end=x.end;if(x.g){r.gua=x.g.gua;if(x.g.guaName||x.g.gua!=='あり')r.guaName=x.g.guaName}
+  });
+  if(!S.rooms.length)S.rooms.push(blankRoom());
+  errs={};S._paste='';S._pasteOpen=false;S._pasteClosed=true;keep();render('pasteToggle');
+  var how={'8':'8列の並び','old':'4〜5列の並び','head':'1行目の見出しの並び','ai':'AIの提案（確かめた列の対応）'}[res.fmt];
+  var msg=how+'で、'+(added?added+'室を追加':'')+(added&&upd?'、':'')+(upd?upd+'室を上書き':'')+'しました'+(res.bad?'（読めなかった行 '+res.bad+'）':'')+(res.badEnd?'（契約の日付が読めなかった行 '+res.badEnd+'：空欄にしました）':'')+'。内容を確かめてください';
+  GK.toast(msg,function(){S.rooms=prevR;S._paste=txt;S._pasteOpen=true;keep();render('paste')});
+}
+function lastGuaName(){var n='';S.rooms.forEach(function(r){if(r.gua==='あり'&&str(r.guaName).trim())n=r.guaName.trim()});return n}
+
+/* ---- 書類から読み込む (ganki-docs.js) ----
+   手順1: 重要事項説明書 -> 物件名・所在地・建物の種類・築年. 手順3: 入居者名簿 + 賃貸借契約書（何通でも） -> the room table:
+   the same rules as 名簿から貼り付け (same 部屋番号 = 上書き, a new number = 追加, 保証会社 via parseGua); 元に戻す puts S back. */
+function noDocs(){if(GK.docs)return false;GK.toast('書類の読み込みを開けませんでした。画面を開き直してください');return true}
+function openDocsProp(){
+  if(noDocs())return;
+  GK.docs.open({kinds:['jusetsu'],dup:false,lead:'重要事項説明書から、物件の欄に入れます。',
+    ctx:{prop:{n:S.name,addr:S.prop.addr,struct:S.prop.struct,year:S.prop.year}},
+    fields:[{key:'name',doc:'propName',label:'物件名',cur:S.name},{key:'prop.addr',doc:'propAddr',label:'所在地',cur:S.prop.addr},
+      {key:'prop.struct',doc:'struct',label:'建物の種類',cur:S.prop.struct},{key:'prop.year',doc:'year',label:'築年',cur:S.prop.year}],
+    apply:function(vals){
+      var prev={name:S.name,prop:JSON.parse(JSON.stringify(S.prop))},marks=[];
+      Object.keys(vals).forEach(function(k){setP(k,str(vals[k]));delete errs[k];marks.push({sel:'#f-'+k.replace(/\./g,'-'),val:getP(k)})});
+      keep();render();
+      return {undo:function(){S.name=prev.name;S.prop=prev.prop;keep();render()},marks:marks};
+    }});
+}
+function docRows(){return S.rooms.filter(function(r){return normNo(r.no)}).map(function(r){return {no:normNo(r.no),ten:str(r.ten).trim(),k:str(r.k).trim(),tel:str(r.tel).trim(),rent:str(r.rent).trim(),start:r.start,end:r.end,
+  gua:r.gua==='あり'&&str(r.guaName).trim()?str(r.guaName).trim():r.gua==='なし'?'なし':''}})}
+function openDocsRooms(){
+  if(noDocs())return;
+  var cur=docRows();
+  GK.docs.open({kinds:['roster','lease'],lead:(S.name.trim()?S.name.trim()+' の':'')+'部屋と入居者の表に入れます。',
+    ctx:{rooms:cur},
+    rows:{cur:cur,apply:function(rows){
+      var prevR=JSON.parse(JSON.stringify(S.rooms)),F=['k','tel','rent','start','end'];
+      S.rooms=S.rooms.filter(function(r){return !blankRow(r)});
+      rows.forEach(function(x){
+        var r=S.rooms.filter(function(y){return normNo(y.no)===x.no})[0];
+        if(!r){r=blankRoom(x.no);S.rooms.push(r)}
+        if('ten' in x)r.ten=x.ten;
+        F.forEach(function(f){if(x[f])r[f]=x[f]});
+        var g=x.gua?parseGua(x.gua):null;if(g){r.gua=g.gua;if(g.guaName||g.gua!=='あり')r.guaName=g.guaName}
+      });
+      if(!S.rooms.length)S.rooms.push(blankRoom());
+      errs={};S._pasteOpen=false;keep();render();
+      var marks=[];
+      rows.forEach(function(x){
+        var i=-1;S.rooms.forEach(function(y,j){if(i<0&&normNo(y.no)===x.no)i=j});if(i<0)return;var r=S.rooms[i];
+        ['ten'].concat(F).forEach(function(f){if(x[f])marks.push({sel:'#r-'+i+'-'+f,val:r[f]})});
+        if(x.gua){marks.push({sel:'#r-'+i+'-gua',val:r.gua});if(r.guaName)marks.push({sel:'#r-'+i+'-guaName',val:r.guaName})}
+      });
+      return {undo:function(){S.rooms=prevR;keep();render()},marks:marks};
+    }}});
+}
+
+/* ---- events ---- */
+function clearErr(key,t){if(!errs[key])return;delete errs[key];t.removeAttribute('aria-invalid');t.removeAttribute('aria-describedby');var em=document.getElementById(t.id+'-e');if(em)em.remove()}
+document.addEventListener('input',function(e){
+  var t=e.target,d=t.dataset||{};
+  if(d.k){setP(d.k,t.value);clearErr(d.k,t);keep();renderSum();
+    if(/^owner\.(n|tel)$/.test(d.k)){var b=$('#dup-owner');if(b)b.innerHTML=dupOwner()}
+    if(d.k==='name'){var b2=$('#dup-prop');if(b2)b2.innerHTML=dupProp()}
+    return}
+  if(d.room){
+    var q=d.room.split(':'),i=+q[0],r=S.rooms[i];if(!r)return;r[q[1]]=t.value;
+    if(errs['r'+i+'.'+q[1]]){delete errs['r'+i+'.'+q[1]];t.removeAttribute('aria-invalid')}
+    if(q[1]==='ten'){var tag=document.getElementById('r-'+i+'-tag');if(tag){var occ=!!t.value.trim();tag.textContent=occ?'入居中':'空室';tag.className='pill'+(occ?' ok':'')}}
+    if(q[1]==='gua'){
+      var g=document.getElementById('gn-'+i);if(g)g.hidden=t.value!=='あり';
+      if(t.value==='あり'&&!str(r.guaName).trim()){r.guaName=lastGuaName();var gi=document.getElementById('r-'+i+'-guaName');if(gi)gi.value=r.guaName}
+    }
+    keep();renderSum();return;
+  }
+  if(d.docnote!==undefined){var dn=S.docs[+d.docnote];if(dn){dn[2]=t.value;keep()}return}
+  if(d.letter){S.letters.text[d.letter]=t.value;keep();return}
+  if(t.id==='paste'){S._paste=t.value;if(errs.paste){delete errs.paste;t.removeAttribute('aria-invalid')}return}
+  if(t.id==='b-from'||t.id==='b-to'){S[t.id==='b-from'?'_bf':'_bt']=t.value;return}
+  if(t.id==='all-gua'){S._ag=t.value;return}
+  if(t.id==='o-q'){S._oq=t.value;if(e.isComposing)return;render('o-q');var oq=$('#o-q');if(oq&&oq.setSelectionRange)oq.setSelectionRange(oq.value.length,oq.value.length);return}
+});
+document.addEventListener('compositionend',function(e){if(e.target.id==='o-q'){S._oq=e.target.value;render('o-q')}});
+document.addEventListener('change',function(e){
+  var t=e.target,d=t.dataset||{};
+  if(d.k){setP(d.k,t.value);keep();if(t.type==='date'){delete errs[d.k];render(t.id)}return}
+  if(d.pick==='owner'){S.owner.id=t.value;delete errs.ownerPick;keep();render('op-'+t.value);return}
+  /* 「AIで列を合わせる」: the person changes the field of a column */
+  if(d.aicol!==undefined&&AIC){var pt=$('#paste');if(pt)S._paste=pt.value;var c=AIC.cols[+d.aicol];if(c){c.key=t.value;c.user=true;AIC.err=''}render(t.id);return}
+});
+/* Esc closes the 「AIで列を合わせる」 panel (focus back on its button) */
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape'||!AIC||e.isComposing)return;
+  var t=e.target;if(!t||!t.closest||!t.closest('#aiColsBox'))return;
+  e.preventDefault();var pe=$('#paste');if(pe)S._paste=pe.value;AIC=null;render('aiCols');
+});
+document.addEventListener('click',function(e){
+  var t=e.target.closest('button');if(!t)return;var d=t.dataset||{};
+  if(t.id==='next')return go(S.cur+1);
+  if(t.id==='back')return go(S.cur-1,true);
+  if(d.go!==undefined&&!S.done){
+    var gi=+d.go;
+    if(gi>S.cur){for(var j=S.cur;j<gi;j++){if(Object.keys(check(j)).length){S.cur=j;errs=check(j);render();focusBad();GK.toast('先に「'+STEPS[j]+'」を入れてください');return}}}
+    return go(gi,true);
+  }
+  if(t.id==='saveHome'){
+    if(S.id||hasInput(S)){persist();GK.toast('保存しました。ホームの「管理の引継ぎ」から続きを開けます')}
+    location.href='index.html';return;
+  }
+  if(d.mode){S.owner.mode=d.mode;errs={};keep();render();var mb=document.querySelector('[data-mode="'+d.mode+'"]');if(mb)mb.focus();return}
+  if(d.use){S.owner.mode='pick';S.owner.id=d.use;errs={};keep();render();GK.toast('登録済みのオーナーを使います。二重に登録されません');return}
+  if(d.chip){var c=d.chip.split('|');setP(c[0],c[1]);delete errs[c[0]];keep();render('f-'+c[0].replace(/\./g,'-'));return}
+  if(d.doc){var dc=d.doc.split(':'),di=S.docs[+dc[0]];if(di){di[1]=+dc[1];keep();render('doc-'+dc[0]+'-'+dc[1])}return}
+  if(t.id==='allDocs'){var prevD=JSON.parse(JSON.stringify(S.docs));S.docs.forEach(function(x){x[1]=1});keep();render();GK.toast('すべて受け取り済みにしました',function(){S.docs=prevD;keep();render()});return}
+  if(t.id==='readDocProp'||t.id==='readDocRooms'){if(!GK.can('doc.read'))return;return t.id==='readDocProp'?openDocsProp():openDocsRooms()}
+  if(t.id==='pasteToggle'){var op=t.getAttribute('aria-expanded')==='true';S._pasteOpen=!op;S._pasteClosed=op;render(op?'pasteToggle':'paste');return}
+  if(t.id==='pasteGo'){
+    var ta=$('#paste'),txt=ta?ta.value:S._paste||'';S._paste=txt;
+    var res=parsePaste(txt);
+    if(!res.rows.length){errs.paste='読み取れる行がありませんでした。「101, 青木 陽菜, 72000, 2027/3/31」のように、1行に1部屋ずつ入れてください。';render('paste');return}
+    AIC=null;return applyPaste(res,txt);
+  }
+  if(t.id==='aiCols'){if(!GK.ai||!GK.can('ai.columns'))return;return aiColsStart()}
+  if(t.id==='aiColsGo'){if(!GK.ai||!GK.can('ai.columns'))return;return aiColsGo()}
+  if(t.id==='aiColsNo'){var pn=$('#paste');if(pn)S._paste=pn.value;AIC=null;render('aiCols');return}
+  if(t.id==='addRoom'){S.rooms.push(blankRoom());keep();render('r-'+(S.rooms.length-1)+'-no');return}
+  if(d.rmroom!==undefined){
+    var ri=+d.rmroom,rv=S.rooms.splice(ri,1)[0];errs={};keep();render();
+    GK.toast((rv.no?rv.no:'空の行')+' を削除しました',function(){S.rooms.splice(ri,0,rv);keep();render()});return;
+  }
+  if(t.id==='bulkAdd'){
+    var fv=$('#b-from')?$('#b-from').value:'',tv=$('#b-to')?$('#b-to').value:'';S._bf=fv;S._bt=tv;
+    var a=parseInt(str(fv).normalize('NFKC'),10),z=parseInt(str(tv).normalize('NFKC'),10);
+    if(!(a>0&&z>=a&&z-a<50)){errs.bulk='部屋番号を「101 〜 105」のように入れてください（1回に50室まで。階ごとに分けて追加できます）。';render('b-from');return}
+    errs={};
+    var have=S.rooms.map(function(r){return normNo(r.no)}),prevB=JSON.parse(JSON.stringify(S.rooms)),add=0,skipped=0;
+    S.rooms=S.rooms.filter(function(r){return !blankRow(r)});
+    for(var n=a;n<=z;n++){if(have.indexOf(String(n))<0){S.rooms.push(blankRoom(String(n)));add++}else skipped++}
+    if(!S.rooms.length)S.rooms.push(blankRoom());
+    S._bf='';S._bt='';keep();render('b-from');
+    GK.toast(add+'室を追加しました'+(skipped?'（すでにある '+skipped+'室は飛ばしました）':''),function(){S.rooms=prevB;keep();render()});return;
+  }
+  if(t.id==='allGua'){
+    var gv=$('#all-gua')?$('#all-gua').value.trim():str(S._ag).trim();S._ag=gv;
+    if(!gv){errs.allGua='保証会社の名前を入れてください（例：ガンキ保証）。';render('all-gua');return}
+    delete errs.allGua;
+    var prevG=JSON.parse(JSON.stringify(S.rooms)),tg=S.rooms.filter(function(r){return normNo(r.no)&&str(r.ten).trim()});
+    if(!tg.length)tg=S.rooms.filter(function(r){return normNo(r.no)});
+    if(!tg.length){errs.allGua='先に部屋を入れてください。';render('all-gua');return}
+    tg.forEach(function(r){r.gua='あり';r.guaName=gv});
+    Object.keys(errs).forEach(function(k){if(/^r\d+\.guaName$/.test(k))delete errs[k]});
+    keep();render('allGua');GK.toast(tg.length+'室の保証会社を「'+gv+'」にしました',function(){S.rooms=prevG;keep();render()});return;
+  }
+  if(t.id==='draft'){var cc=counts();S.letters.drafted=true;keep();render('draft');GK.toast((cc.yes+cc.no)+'通の下書きを作成しました。送るのは '+md(sendOn())+' の予定です');return}
+  if(d.reletter){var k=d.reletter,old=S.letters.text[k];S.letters.text[k]='';keep();render('lt-'+k);GK.toast('元の文面に戻しました',function(){S.letters.text[k]=old;keep();render('lt-'+k)});return}
+  if(t.id==='save'){
+    var bad=firstBad();if(bad>=0){S.cur=bad;errs=check(bad);render();focusBad();GK.toast('「'+STEPS[bad]+'」に足りないところがあります');return}
+    var made=commit(),nm=S.name;
+    render();focusHead();if(window.scrollTo)window.scrollTo(0,0);
+    GK.toast('「'+nm+'」の引継ぎを登録しました',function(){undoCommit(made);GK.toast('登録を取り消しました。入力した内容は残っています')});
+    return;
+  }
+  if(t.id==='reset')return startOver(true);
+  if(t.id==='dropDraft')return startOver(false);
+  if(t.id==='fresh'){S=blank();errs={};note='';clearHash();render();focusHead();return}
+  if(d.open){
+    if(d.open==='local'){var ld=localDraft();if(ld){S=fromRec(ld);S.cur=Math.max(0,Math.min(4,+ld.cur||0));S._restored=true;errs={};note='';clearHash();render();focusHead()}return}
+    return openRec(d.open);
+  }
+  if(t.id==='sumToggle'){$('#sum').classList.toggle('open');renderSum();return}
+});
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'||e.isComposing||e.keyCode===229)return;
+  var t=e.target;if(!t||t.tagName!=='INPUT'||/radio|checkbox|button|submit/.test(t.type))return;
+  e.preventDefault(); /* Enter never sends the step by accident; only the plain fields of steps 1 and 4 mean 「次へ」 */
+  if(t.id==='b-from'){var b=$('#b-to');if(b)b.focus();return}
+  if(t.id==='b-to'){var a=$('#bulkAdd');if(a)a.click();return}
+  if(t.id==='all-gua'){var g=$('#allGua');if(g)g.click();return}
+  if(t.dataset&&t.dataset.k){var n=$('#next');if(n)n.click()}
+});
+var wide=window.innerWidth>640;window.addEventListener('resize',function(){var w=window.innerWidth>640;if(w!==wide){wide=w;renderSum()}});
+
+/* save everything in one go (the real system does this in one database transaction).
+   Returns the ids of what it created, for 「元に戻す」 (undoCommit removes only those, so changes saved in other tabs stay). */
+function commit(){
+  persist();
+  var db=GK.db,stamp=Date.now(),oid,pid=nextPid(),R=rooms(),ts=planTasks();
+  var made={to:S.id,owner:'',prop:pid,units:[],tenants:[],leases:[],tasks:[],log:null,hist:''};
+  if(S.owner.mode==='pick'&&GK.owner(S.owner.id))oid=S.owner.id;
+  else{oid='o'+stamp;db.owners.push({id:oid,n:S.owner.n.trim(),k:S.owner.k.trim(),tel:ft(S.owner.tel),mail:'',addr:'',bank:'',fee:5});made.owner=oid}
+  var y=str(S.prop.year).normalize('NFKC').trim();
+  db.props.push({id:pid,n:S.name.trim(),owner:oid,addr:S.prop.addr.trim(),type:[S.prop.struct.trim(),y?y+'年築':''].filter(Boolean).join(' · '),since:S.start,rooms:R.map(function(r){return r.no}),prevMgr:{n:S.prev.n.trim(),tel:ft(S.prev.tel)},takeover:S.id});
+  var occ=0;
+  R.forEach(function(r,i){
+    var uid=pid+'-'+r.no;
+    db.units.push({id:uid,prop:pid,no:r.no,lay:'未登録',area:0,rent:GK.num(r.rent),fee:0,vacant:''});made.units.push(uid);
+    if(!r.ten)return;occ++;
+    var tid='T'+(stamp+i);
+    db.tenants.push({id:tid,n:r.ten,k:r.k,tel:r.tel,mail:'',emName:'',emTel:'',work:''});made.tenants.push(tid);made.leases.push('L'+(stamp+i));
+    var tm=term(r),ls={id:'L'+(stamp+i),unit:uid,tenant:tid,start:tm.start,end:tm.end,rent:GK.num(r.rent),fee:0,dep:0,pay:27,gua:r.gua==='あり'?r.guaName:'',status:'有効',takeover:S.id};
+    if(tm.startUnknown)ls.startUnknown=true;
+    if(tm.endUnknown)ls.endUnknown=true;
+    db.leases.push(ls);
+  });
+  ts.forEach(function(x){var k=addTask(pid+'-'+x.no,x.t,x.due);if(k&&k.id)made.tasks.push(k.id)});
+  S.done=true;S.propId=pid;S.doneAt=T;S.step=4;S.updated=nowStamp();
+  var list=GK.takeovers(),rec=toRec(S),k=-1;list.forEach(function(x,j){if(x.id===S.id)k=j});
+  if(k>=0)list[k]=rec;else list.push(rec);
+  GK.log('管理の引継ぎを登録しました：物件「'+S.name.trim()+'」（'+R.length+'室・入居中 '+occ+'室'+(S.prev.n.trim()?'・前の管理会社 '+S.prev.n.trim():'')+'）、やること '+ts.length+'件',R.length?pid+'-'+R[0].no:'');
+  if(db.log[0])made.log={at:db.log[0].at,t:db.log[0].t};
+  if(R.length&&db.hist[0])made.hist=db.hist[0].id;
+  GK.save();GK.store.drop(KEY);
+  return made;
+}
+/* 「元に戻す」 of 引継ぎを登録: reads the latest store (another tab may have saved since), deletes only the records
+   commit() created (looked up by id now, not by position or count), and puts the takeover back to not done */
+function undoCommit(m){
+  fresh();var db=GK.db;
+  var not=function(ids){return function(x){return ids.indexOf(x.id)<0}};
+  db.leases=db.leases.filter(not(m.leases));
+  db.tenants=db.tenants.filter(not(m.tenants));
+  db.units=db.units.filter(not(m.units));
+  db.props=db.props.filter(function(p){return p.id!==m.prop});
+  if(m.owner&&!db.props.some(function(p){return p.owner===m.owner}))db.owners=db.owners.filter(function(o){return o.id!==m.owner});
+  db.tasks=db.tasks.filter(not(m.tasks));
+  if(m.log)db.log=db.log.filter(function(x){return !(x.at===m.log.at&&x.t===m.log.t)});
+  if(m.hist)db.hist=db.hist.filter(function(x){return x.id!==m.hist});
+  var r=GK.takeover(m.to);
+  if(r){r.done=false;delete r.propId;delete r.doneAt;r.step=4;r.updated=nowStamp()}
+  GK.save();
+  S=r?fromRec(r):S;S.done=false;delete S.propId;delete S.doneAt;S.cur=4;errs={};note='';
+  if(S.id)setHash(S.id);
+  render();
+}
+
+/* ---- start: takeover.html#to-<id> opens a saved takeover; otherwise a new one (or the unsaved draft in this browser) ---- */
+function boot(){
+  var id=GK.hash('to');note='';errs={};
+  if(id){openRec(id);return}
+  var ld=localDraft();
+  if(ld){S=fromRec(ld);S.cur=Math.max(0,Math.min(4,+ld.cur||0));S._restored=true}
+  else S=blank();
+  render();
+}
+window.addEventListener('hashchange',function(){if(GK.hash('to')!==S.id)boot()});
+/* cross-page sync (ganki-data.js reloads GK.db first, then calls this) */
+window.GKrefresh=function(){
+  if(S.done){render();return}
+  if(!S.id){renderRestore();return}
+  var r=GK.takeover(S.id);
+  if(r&&r.done){openRec(S.id);GK.toast('この引継ぎは別の画面で登録されました');return}
+  if(!r){note='<span>この引継ぎは別の画面で取りやめられました。このまま入力を続けると、もう一度保存します。</span>';renderRestore();return}
+  if(str(r.updated)!==str(S.updated)){var cur=S.cur;S=fromRec(r);S.cur=Math.min(cur,S.step);errs={};render();GK.toast('別の画面での変更を読み込みました');return}
+  renderRestore();renderSum();
+};
+boot();
+})();
+</script>
+</body></html>
